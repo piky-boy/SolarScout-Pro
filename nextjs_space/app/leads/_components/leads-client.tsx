@@ -33,8 +33,10 @@ import {
   Search,
   Sun,
   Trash2,
+  Wand2,
   X,
 } from 'lucide-react'
+import { BulkOutreachDialog } from './bulk-outreach-dialog'
 
 interface LeadItem {
   id: string
@@ -96,6 +98,7 @@ export function LeadsClient({ initialLeads, filterOptions }: LeadsClientProps) {
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [exporting, setExporting] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -246,6 +249,14 @@ export function LeadsClient({ initialLeads, filterOptions }: LeadsClientProps) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => setBulkOpen(true)}
+            disabled={selectedCount === 0}
+            className="bg-violet-600 text-white hover:bg-violet-700"
+          >
+            <Wand2 className="mr-2 h-4 w-4" /> Bulk outreach ({selectedCount})
+          </Button>
           <Button variant="outline" size="sm" onClick={() => exportLeads('csv')} disabled={exporting}>
             <Download className="mr-2 h-4 w-4" /> CSV
           </Button>
@@ -262,6 +273,26 @@ export function LeadsClient({ initialLeads, filterOptions }: LeadsClientProps) {
           </Button>
         </div>
       </div>
+
+      <BulkOutreachDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        leads={filtered
+          .filter((l) => selected[l.id])
+          .map((l) => ({
+            id: l.id,
+            businessName: l.businessName,
+            country: l.country,
+            contactEmail: l.contactEmail,
+          }))}
+        onSent={(ids) => {
+          // Optimistically advance status so UI reflects CONTACTED
+          setLeads((prev) =>
+            prev.map((l) => (ids.includes(l.id) ? { ...l, status: 'CONTACTED' } : l))
+          )
+          setSelected({})
+        }}
+      />
 
       <Card className="mb-6">
         <CardContent className="space-y-4 p-5">

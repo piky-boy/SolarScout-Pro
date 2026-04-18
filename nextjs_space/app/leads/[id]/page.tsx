@@ -24,6 +24,7 @@ import { LeadDetailMap } from './_components/lead-detail-map'
 import { LeadNotesForm } from './_components/lead-notes-form'
 import { SolarInsights } from './_components/solar-insights'
 import { OutreachGenerator } from './_components/outreach-generator'
+import { ProposalButton } from './_components/proposal-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -59,12 +60,18 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
       <SiteHeader />
       <main className="flex-1">
         <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-6">
+          <div className="mb-6 flex items-center justify-between gap-3">
             <Link href="/leads">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="mr-2 h-4 w-4" /> All leads
               </Button>
             </Link>
+            <ProposalButton
+              leadId={lead.id}
+              businessName={lead.businessName}
+              defaultSenderName={session.user.name ?? null}
+              defaultSenderEmail={session.user.email ?? null}
+            />
           </div>
 
           <div className="mb-6 flex flex-wrap items-center gap-3">
