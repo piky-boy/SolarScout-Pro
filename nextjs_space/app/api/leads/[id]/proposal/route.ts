@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { computeBusinessCase } from '@/lib/outreach'
 import { renderProposalHtml } from '@/lib/proposal-html'
+import { extractPanelLayoutFromRawJson } from '@/lib/proposal-panels'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -11,25 +12,47 @@ export const maxDuration = 120
 const CREATE_PDF_URL = 'https://apps.abacus.ai/api/createConvertHtmlToPdfRequest'
 const STATUS_PDF_URL = 'https://apps.abacus.ai/api/getConvertHtmlToPdfStatus'
 
+// Native image size used for the Mapbox static image. The @2x suffix in the
+// URL makes the image 2× this internally for retina sharpness but coordinates
+// are computed against this logical size.
+const MAP_W = 900
+const MAP_H = 600
+
 /**
  * Build a Mapbox Static Images API URL.
  * Using pure `satellite-v9` style (no streets overlay) to keep the image clean.
- * Zoom 19 gives a tight crop on the building for a commercial rooftop.
  *
- * withPin=true places a small red pin on the coordinate (used in the "Before" image);
- * withPin=false returns the same framing without the pin (used under the panel overlay).
+ * `pinLat/pinLng` (optional) place a red pin at a specific coordinate — useful
+ * to keep the original lead pin visible on the "Before" image while the map is
+ * centred on the Solar-API-derived building centre for accurate panel overlay.
  */
-function buildMapboxStaticUrl(lat: number, lng: number, withPin = true): string | null {
+function buildMapboxStaticUrl(
+  centerLat: number,
+  centerLng: number,
+  zoom: number,
+  pin?: { lat: number; lng: number } | null
+): string | null {
   const token = process.env.MAPBOX_TOKEN || process.env.NEXT_PUBLIC_MAPBOX_TOKEN
   if (!token) return null
   const scheme = 'ht' + 'tps:' + '//'
   const host = 'api' + '.' + 'mapbox' + '.com'
   const style = 'satellite-v9'
-  const zoom = 19
-  const w = 900
-  const h = 600
-  const overlay = withPin ? 'pin-s+ef4444(' + lng + ',' + lat + ')/' : ''
-  const path = '/styles/v1/mapbox/' + style + '/static/' + overlay + lng + ',' + lat + ',' + zoom + ',0/' + w + 'x' + h + '@2x'
+  const overlay = pin ? 'pin-s+ef4444(' + pin.lng + ',' + pin.lat + ')/' : ''
+  const path =
+    '/styles/v1/mapbox/' +
+    style +
+    '/static/' +
+    overlay +
+    centerLng +
+    ',' +
+    centerLat +
+    ',' +
+    zoom +
+    ',0/' +
+    MAP_W +
+    'x' +
+    MAP_H +
+    '@2x'
   return scheme + host + path + '?access_token=' + encodeURIComponent(token)
 }
 
@@ -72,6 +95,24 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       roofAreaSqm: lead.roofAreaSqm,
     })
 
+    // Extract the real panel layout from the cached Google Solar API response.
+    // When available, we use the Solar API's building centre + an auto-fit zoom
+    // to frame the building tightly, and the panel positions are rendered as
+    // pixel-accurate SVG rectangles exactly where each panel sits on the roof.
+    // When absent, we fall back to the lead's lat/lng at a default zoom and a
+    // generic scaled panel grid.
+    const panelLayout = extractPanelLayoutFromRawJson(
+      lead.solarRawJson,
+      lead.latitude,
+      lead.longitude,
+      MAP_W,
+      MAP_H
+    )
+
+    const mapCenterLat = panelLayout?.centerLat ?? lead.latitude
+    const mapCenterLng = panelLayout?.centerLng ?? lead.longitude
+    const mapZoom = panelLayout?.zoom ?? 19
+
     const html = renderProposalHtml({
       lead: {
         businessName: lead.businessName,
@@ -104,8 +145,23 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       senderCompany,
       senderEmail,
       senderPhone,
-      satelliteImageUrl: buildMapboxStaticUrl(lead.latitude, lead.longitude, true),
-      satelliteImageUrlClean: buildMapboxStaticUrl(lead.latitude, lead.longitude, false),
+      // "Before" is centred on the Solar-API building centre (same as "After")
+      // with a red pin at the lead's original coordinate so users can visually
+      // verify we're showing the right building.
+      satelliteImageUrl: buildMapboxStaticUrl(
+        mapCenterLat,
+        mapCenterLng,
+        mapZoom,
+        { lat: lead.latitude, lng: lead.longitude }
+      ),
+      // "After" uses the same framing without the pin — panels cover the roof.
+      satelliteImageUrlClean: buildMapboxStaticUrl(
+        mapCenterLat,
+        mapCenterLng,
+        mapZoom,
+        null
+      ),
+      panelLayout,
       generatedAt: new Date().toLocaleDateString('en-GB', {
         year: 'numeric',
         month: 'long',

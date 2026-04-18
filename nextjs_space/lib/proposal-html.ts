@@ -8,6 +8,10 @@
  */
 
 import type { BusinessCase } from './outreach'
+import {
+  renderPanelArraySvg,
+  type PanelLayoutInput,
+} from './proposal-panels'
 
 export interface ProposalData {
   lead: {
@@ -45,6 +49,12 @@ export interface ProposalData {
   satelliteImageUrl: string | null
   /** Optional second satellite image — usually the same URL as satelliteImageUrl, used as the backdrop for the AFTER view. */
   satelliteImageUrlClean?: string | null
+  /**
+   * Optional real panel layout from Google Solar API.
+   * When present we render actual panel positions (pixel-accurate, rotated by
+   * roof azimuth) instead of a generic centered grid.
+   */
+  panelLayout?: PanelLayoutInput | null
   generatedAt: string
 }
 
@@ -145,7 +155,7 @@ function computePanelOverlay(lead: ProposalData['lead']): {
 }
 
 export function renderProposalHtml(data: ProposalData): string {
-  const { lead, businessCase, senderName, senderCompany, senderEmail, senderPhone, satelliteImageUrl, satelliteImageUrlClean, generatedAt } = data
+  const { lead, businessCase, senderName, senderCompany, senderEmail, senderPhone, satelliteImageUrl, satelliteImageUrlClean, panelLayout, generatedAt } = data
   const displayName = lead.businessName || 'Commercial rooftop'
   const addr = lead.address || `${lead.latitude.toFixed(5)}, ${lead.longitude.toFixed(5)}`
   const city = [lead.city, lead.country].filter(Boolean).join(', ')
@@ -165,8 +175,19 @@ export function renderProposalHtml(data: ProposalData): string {
   const beforeImg = satelliteImageUrl
   const afterImg = satelliteImageUrlClean || satelliteImageUrl
 
-  // Panel overlay sized to the actual rooftop (Solar API if available, else estimate).
-  const overlay = computePanelOverlay(lead)
+  // Prefer a real panel layout (pixel-accurate, from Google Solar API) when available.
+  // Fall back to a generic scalable grid sized from roof area so the "After" image
+  // still looks plausible when Solar API data is missing.
+  const useRealLayout = !!panelLayout && panelLayout.panels.length > 0
+  const overlay = useRealLayout ? null : computePanelOverlay(lead)
+  const realPanelSvg = useRealLayout ? renderPanelArraySvg(panelLayout!) : ''
+  const displayedPanelCount = useRealLayout
+    ? panelLayout!.panels.length
+    : overlay!.displayedPanelCount
+  const overlayIsEstimate = useRealLayout ? false : overlay!.isEstimate
+  const overlayKwp = useRealLayout
+    ? (displayedPanelCount * (lead.solarPanelCapacityWatts || 400)) / 1000
+    : overlay!.estimatedKwp
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -229,7 +250,7 @@ export function renderProposalHtml(data: ProposalData): string {
   .ba-caption { padding: 7px 10px 9px; background: white; font-size: 10px; color: #374151; }
   .ba-caption strong { color: #0f172a; }
 
-  /* The solar panel array overlay — width/height set inline per-lead */
+  /* The solar panel array overlay — width/height set inline per-lead (fallback grid mode) */
   .panel-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
   .panel-array {
     display: grid;
@@ -237,6 +258,16 @@ export function renderProposalHtml(data: ProposalData): string {
     transform: rotate(-6deg) perspective(400px) rotateX(10deg);
     transform-origin: center center;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+  }
+
+  /* Real-panel SVG overlay (pixel-accurate, from Google Solar API) */
+  .panel-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
   }
   .panel {
     background:
@@ -281,10 +312,10 @@ export function renderProposalHtml(data: ProposalData): string {
       <div class="ba-card">
         <div class="ba-imgbox">
           ${afterImg ? `<img class="ba-img" src="${escape(afterImg)}" alt="Rooftop with solar panels" />` : '<div class="ba-img-empty">Satellite image unavailable</div>'}
-          <div class="panel-wrap">${panelGridHtml(overlay.cols, overlay.rows, overlay.widthPct, overlay.heightPct)}</div>
+          ${useRealLayout ? realPanelSvg : `<div class="panel-wrap">${panelGridHtml(overlay!.cols, overlay!.rows, overlay!.widthPct, overlay!.heightPct)}</div>`}
           <span class="ba-label after">After</span>
         </div>
-        <div class="ba-caption"><strong>With ${overlay.isEstimate ? '~' : ''}${num(overlay.displayedPanelCount)} solar panels</strong>${overlay.estimatedKwp ? ' — ' + overlay.estimatedKwp.toFixed(1) + ' kWp system' + (overlay.isEstimate ? ' (estimated)' : '') : ''}</div>
+        <div class="ba-caption"><strong>With ${overlayIsEstimate ? '~' : ''}${num(displayedPanelCount)} solar panels</strong>${overlayKwp ? ' — ' + overlayKwp.toFixed(1) + ' kWp system' + (overlayIsEstimate ? ' (estimated)' : '') : ''}</div>
       </div>
     </div>
   </div>
