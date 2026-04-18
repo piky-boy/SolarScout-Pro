@@ -4,7 +4,15 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { computeBusinessCase } from '@/lib/outreach'
 import { renderProposalHtml } from '@/lib/proposal-html'
-import { extractPanelLayoutFromRawJson } from '@/lib/proposal-panels'
+import {
+  extractPanelLayoutFromRawJson,
+  renderPanelArraySvgByProjection,
+} from '@/lib/proposal-panels'
+import {
+  fetchSolarImagery,
+  cropSolarImageryToBuildingBBox,
+  drawPinOnPng,
+} from '@/lib/solar-imagery'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -113,6 +121,100 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const mapCenterLng = panelLayout?.centerLng ?? lead.longitude
     const mapZoom = panelLayout?.zoom ?? 19
 
+    // PREFERRED PATH — Google Solar API RGB imagery.
+    //
+    // Google's Solar API returns panel lat/lngs referenced to Google's own aerial
+    // photography. Mapbox satellite imagery is a different source (different date
+    // and different image-registration), which caused the panels to land slightly
+    // off the actual roof. By fetching Solar API's own RGB GeoTIFF (same source
+    // as the panel coordinates), the overlay lands pixel-perfectly on the roof.
+    //
+    // If anything fails (no API key, no coverage, decoding error) we fall back
+    // to the Mapbox flow at the bottom of this block.
+    let beforeUrl: string | null = null
+    let afterUrl: string | null = null
+    let panelSvgOverride: string | null = null
+    let imageAspectRatio: number | null = null
+    let panelCountOverride: number | null = null
+
+    if (panelLayout && panelLayout.panels.length > 0) {
+      try {
+        const bbox = panelLayout.bbox!
+        // Approximate radius to retrieve. Pad by 25m around the panel bbox so the
+        // Solar API returns enough tile area to comfortably frame the building.
+        const centerLat = (bbox.north + bbox.south) / 2
+        const mPerDegLat = 111_132.954
+        const mPerDegLng = 111_132.954 * Math.cos((centerLat * Math.PI) / 180)
+        const heightMeters = Math.abs(bbox.north - bbox.south) * mPerDegLat
+        const widthMeters = Math.abs(bbox.east - bbox.west) * mPerDegLng
+        const radius = Math.max(widthMeters, heightMeters) / 2 + 25
+
+        const imagery = await fetchSolarImagery(
+          panelLayout.centerLat,
+          panelLayout.centerLng,
+          Math.min(175, Math.max(30, radius))
+        )
+
+        if (imagery) {
+          // Crop to the building bbox at the display's aspect ratio so the SVG
+          // overlays the image 1:1 without any object-fit cropping.
+          const DISPLAY_ASPECT = 332.5 / 155
+          const cropped = await cropSolarImageryToBuildingBBox(
+            imagery,
+            bbox,
+            DISPLAY_ASPECT,
+            12
+          )
+
+          if (cropped) {
+            // BEFORE image: draw a red pin at the lead's original coordinate so
+            // the user can visually verify we're looking at the right building.
+            const pinPx = cropped.latLngToPixel(lead.latitude, lead.longitude)
+            let beforeBuf = cropped.pngBuffer
+            if (
+              pinPx.x >= 0 &&
+              pinPx.x <= cropped.width &&
+              pinPx.y >= 0 &&
+              pinPx.y <= cropped.height
+            ) {
+              beforeBuf = await drawPinOnPng(cropped.pngBuffer, pinPx.x, pinPx.y, { radius: 9 })
+            }
+            beforeUrl = 'data:image/png;base64,' + beforeBuf.toString('base64')
+
+            // AFTER image: clean crop (no pin) — panel SVG overlays it.
+            afterUrl = 'data:image/png;base64,' + cropped.pngBuffer.toString('base64')
+
+            // Real panel SVG using Solar API's UTM projection.
+            panelSvgOverride = renderPanelArraySvgByProjection({
+              panels: panelLayout.panels,
+              segments: panelLayout.segments,
+              panelWidthMeters: panelLayout.panelWidthMeters,
+              panelHeightMeters: panelLayout.panelHeightMeters,
+              metersPerPixel: imagery.metersPerPixel,
+              imgWidth: cropped.width,
+              imgHeight: cropped.height,
+              latLngToPixel: cropped.latLngToPixel,
+            })
+            imageAspectRatio = cropped.width / cropped.height
+            panelCountOverride = panelLayout.panels.length
+          }
+        }
+      } catch (err: any) {
+        console.error('[proposal] solar-imagery failed, falling back to Mapbox', err?.message || err)
+      }
+    }
+
+    // Mapbox fallback (used when Solar imagery fetch/crop fails or panel data is absent).
+    if (!beforeUrl) {
+      beforeUrl = buildMapboxStaticUrl(mapCenterLat, mapCenterLng, mapZoom, {
+        lat: lead.latitude,
+        lng: lead.longitude,
+      })
+    }
+    if (!afterUrl) {
+      afterUrl = buildMapboxStaticUrl(mapCenterLat, mapCenterLng, mapZoom, null)
+    }
+
     const html = renderProposalHtml({
       lead: {
         businessName: lead.businessName,
@@ -145,23 +247,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       senderCompany,
       senderEmail,
       senderPhone,
-      // "Before" is centred on the Solar-API building centre (same as "After")
-      // with a red pin at the lead's original coordinate so users can visually
-      // verify we're showing the right building.
-      satelliteImageUrl: buildMapboxStaticUrl(
-        mapCenterLat,
-        mapCenterLng,
-        mapZoom,
-        { lat: lead.latitude, lng: lead.longitude }
-      ),
-      // "After" uses the same framing without the pin — panels cover the roof.
-      satelliteImageUrlClean: buildMapboxStaticUrl(
-        mapCenterLat,
-        mapCenterLng,
-        mapZoom,
-        null
-      ),
-      panelLayout,
+      satelliteImageUrl: beforeUrl,
+      satelliteImageUrlClean: afterUrl,
+      // Pass the Mapbox-derived layout only when the Solar-imagery path didn't
+      // produce its own SVG override, so we never double-render.
+      panelLayout: panelSvgOverride ? null : panelLayout,
+      panelSvgOverride,
+      panelCountOverride,
+      imageAspectRatio,
       generatedAt: new Date().toLocaleDateString('en-GB', {
         year: 'numeric',
         month: 'long',

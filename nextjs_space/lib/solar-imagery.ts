@@ -116,7 +116,7 @@ export async function fetchSolarImagery(
     // 4. Convert raster bytes → PNG. Solar API's RGB layers are 3-channel 8-bit.
     const raster = (await image.readRasters({ interleave: true })) as unknown as Uint8Array
     if (!(raster instanceof Uint8Array)) {
-      console.warn('[solar-imagery] unexpected raster type', raster?.constructor?.name)
+      console.warn('[solar-imagery] unexpected raster type')
       return null
     }
     const pngBuffer = await sharp(Buffer.from(raster), {

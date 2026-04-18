@@ -341,16 +341,16 @@ export function renderProposalHtml(data: ProposalData): string {
     <h3>Rooftop visualization — before &amp; after</h3>
     <div class="ba-wrap" style="margin-top:8px">
       <div class="ba-card">
-        <div class="ba-imgbox">
-          ${beforeImg ? `<img class="ba-img" src="${escape(beforeImg)}" alt="Current rooftop satellite view" />` : '<div class="ba-img-empty">Satellite image unavailable</div>'}
+        <div class="ba-imgbox" style="${imgBoxStyle}">
+          ${beforeImg ? `<img class="${imgCssClass}" src="${escape(beforeImg)}" alt="Current rooftop satellite view" />` : '<div class="ba-img-empty">Satellite image unavailable</div>'}
           <span class="ba-label">Before</span>
         </div>
         <div class="ba-caption"><strong>Current rooftop</strong> — ${num(lead.roofAreaSqm)} m² of usable surface</div>
       </div>
       <div class="ba-card">
-        <div class="ba-imgbox">
-          ${afterImg ? `<img class="ba-img" src="${escape(afterImg)}" alt="Rooftop with solar panels" />` : '<div class="ba-img-empty">Satellite image unavailable</div>'}
-          ${useRealLayout ? realPanelSvg : `<div class="panel-wrap">${panelGridHtml(overlay!.cols, overlay!.rows, overlay!.widthPct, overlay!.heightPct)}</div>`}
+        <div class="ba-imgbox" style="${imgBoxStyle}">
+          ${afterImg ? `<img class="${imgCssClass}" src="${escape(afterImg)}" alt="Rooftop with solar panels" />` : '<div class="ba-img-empty">Satellite image unavailable</div>'}
+          ${hasRealPanelSvg ? realPanelSvg : `<div class="panel-wrap">${panelGridHtml(overlay!.cols, overlay!.rows, overlay!.widthPct, overlay!.heightPct)}</div>`}
           <span class="ba-label after">After</span>
         </div>
         <div class="ba-caption"><strong>With ${overlayIsEstimate ? '~' : ''}${num(displayedPanelCount)} solar panels</strong>${overlayKwp ? ' — ' + overlayKwp.toFixed(1) + ' kWp system' + (overlayIsEstimate ? ' (estimated)' : '') : ''}</div>
