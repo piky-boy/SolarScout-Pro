@@ -22,7 +22,7 @@ export default async function LeadsPage() {
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 1000,
-      // Omit heavy `solarRawJson` but include summary solar fields
+      // Omit heavy `solarRawJson` but include summary solar + source fields
       select: {
         id: true,
         businessName: true,
@@ -44,6 +44,9 @@ export default async function LeadsPage() {
         solarApiStatus: true,
         solarMaxPanelCount: true,
         solarYearlyEnergyKwh: true,
+        dataSource: true,
+        googleRating: true,
+        googleRatingCount: true,
       },
     }),
     prisma.lead.groupBy({

@@ -152,7 +152,15 @@ export function DashboardClient({ userName, initialTotalLeads, initialRecentSear
       if (found.length === 0) {
         toast.info('No commercial buildings detected in that area. Try a larger city.')
       } else {
-        toast.success(`Found ${found.length} commercial rooftops in ${loc?.placeName ?? q}`)
+        const sourceBits: string[] = []
+        if (typeof data?.hybridCount === 'number' && data.hybridCount > 0) {
+          sourceBits.push(`${data.hybridCount} merged OSM+Google`)
+        }
+        if (typeof data?.placesOnlyCount === 'number' && data.placesOnlyCount > 0) {
+          sourceBits.push(`${data.placesOnlyCount} Google-only`)
+        }
+        const suffix = sourceBits.length > 0 ? ` — ${sourceBits.join(', ')}` : ''
+        toast.success(`Found ${found.length} commercial rooftops in ${loc?.placeName ?? q}${suffix}`)
       }
     } catch (err: any) {
       console.error(err)

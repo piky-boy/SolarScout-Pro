@@ -56,6 +56,9 @@ interface LeadItem {
   solarMaxPanelCount: number | null
   solarYearlyEnergyKwh: number | null
   solarDataFetchedAt: string | null
+  dataSource: string | null
+  googleRating: number | null
+  googleRatingCount: number | null
 }
 
 interface FilterOption {
@@ -398,12 +401,25 @@ export function LeadsClient({ initialLeads, filterOptions }: LeadsClientProps) {
                             aria-label="Select row"
                           />
                         </TableCell>
-                        <TableCell className="max-w-[220px]">
-                          <div className="truncate font-medium">
-                            {lead.businessName ?? <span className="text-muted-foreground">Unnamed building</span>}
+                        <TableCell className="max-w-[260px]">
+                          <div className="flex items-center gap-2">
+                            <div className="truncate font-medium">
+                              {lead.businessName ?? <span className="text-muted-foreground">Unnamed building</span>}
+                            </div>
+                            <SourceDot dataSource={lead.dataSource} />
                           </div>
-                          <div className="truncate text-xs text-muted-foreground">
-                            {lead.address ?? `${lead.latitude.toFixed(4)}, ${lead.longitude.toFixed(4)}`}
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="truncate">
+                              {lead.address ?? `${lead.latitude.toFixed(4)}, ${lead.longitude.toFixed(4)}`}
+                            </span>
+                            {lead.googleRating !== null && lead.googleRating !== undefined ? (
+                              <span className="inline-flex flex-none items-center gap-0.5 text-[11px] text-amber-600 dark:text-amber-400">
+                                ★ {lead.googleRating.toFixed(1)}
+                                {lead.googleRatingCount ? (
+                                  <span className="text-muted-foreground">({lead.googleRatingCount})</span>
+                                ) : null}
+                              </span>
+                            ) : null}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -444,6 +460,40 @@ export function LeadsClient({ initialLeads, filterOptions }: LeadsClientProps) {
       </Card>
     </div>
   )
+}
+
+function SourceDot({ dataSource }: { dataSource: string | null }) {
+  if (!dataSource || dataSource === 'OSM') {
+    return (
+      <span
+        className="inline-flex h-4 flex-none items-center rounded-full border border-emerald-200 bg-emerald-50 px-1.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+        title="Sourced from OpenStreetMap"
+      >
+        OSM
+      </span>
+    )
+  }
+  if (dataSource === 'GOOGLE_PLACES') {
+    return (
+      <span
+        className="inline-flex h-4 flex-none items-center rounded-full border border-blue-200 bg-blue-50 px-1.5 text-[9px] font-semibold uppercase tracking-wider text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300"
+        title="Sourced from Google Places"
+      >
+        Google
+      </span>
+    )
+  }
+  if (dataSource === 'HYBRID') {
+    return (
+      <span
+        className="inline-flex h-4 flex-none items-center rounded-full border border-violet-200 bg-violet-50 px-1.5 text-[9px] font-semibold uppercase tracking-wider text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300"
+        title="Merged from OpenStreetMap + Google Places"
+      >
+        Hybrid
+      </span>
+    )
+  }
+  return null
 }
 
 function SolarCell({ lead }: { lead: LeadItem }) {

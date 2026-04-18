@@ -77,6 +77,11 @@ model Lead {
   contactEmail  String?
   website       String?
   osmId         String?
+  googlePlaceId String?
+  dataSource    String   @default("OSM")   // "OSM" | "GOOGLE_PLACES" | "HYBRID"
+  openingHours  Json?
+  googleRating  Float?
+  googleRatingCount Int?
   notes         String?  @db.Text
   status        String   @default("NEW")
   createdAt     DateTime @default(now())
@@ -104,6 +109,8 @@ model Lead {
   @@index([businessType])
   @@index([createdAt])
   @@index([solarApiStatus])
+  @@index([dataSource])
+  @@index([googlePlaceId])
   @@unique([userId, osmId])
 }
 
