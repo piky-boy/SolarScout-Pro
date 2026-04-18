@@ -5,6 +5,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -15,10 +22,16 @@ import {
 } from '@/components/ui/dialog'
 import { FileText, Loader2, Download } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  SUPPORTED_LANGUAGES,
+  defaultLanguageForCountry,
+  type OutreachLanguage,
+} from '@/lib/outreach'
 
 export interface ProposalButtonProps {
   leadId: string
   businessName: string | null
+  country?: string | null
   defaultSenderName?: string | null
   defaultSenderEmail?: string | null
 }
@@ -26,6 +39,7 @@ export interface ProposalButtonProps {
 export function ProposalButton({
   leadId,
   businessName,
+  country,
   defaultSenderName,
   defaultSenderEmail,
 }: ProposalButtonProps) {
@@ -34,6 +48,10 @@ export function ProposalButton({
   const [senderCompany, setSenderCompany] = useState('')
   const [senderEmail, setSenderEmail] = useState(defaultSenderEmail || '')
   const [senderPhone, setSenderPhone] = useState('')
+  // Default to the country's native language; the user can override via the dropdown.
+  const [language, setLanguage] = useState<OutreachLanguage>(
+    defaultLanguageForCountry(country || null),
+  )
   const [busy, setBusy] = useState(false)
 
   // Hydrate preferences from localStorage only on the client, after mount.
@@ -66,13 +84,19 @@ export function ProposalButton({
         localStorage.setItem('solarscout:senderPhone', senderPhone)
       } catch {}
 
-      toast.info('Building your proposal PDF…', {
+      toast.info('Building your proposal PDF...', {
         description: 'This takes ~10 seconds on average.',
       })
       const res = await fetch(`/api/leads/${leadId}/proposal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ senderName, senderCompany, senderEmail, senderPhone }),
+        body: JSON.stringify({
+          senderName,
+          senderCompany,
+          senderEmail,
+          senderPhone,
+          language,
+        }),
       })
       if (!res.ok) {
         const txt = await res.text()
@@ -114,11 +138,31 @@ export function ProposalButton({
           <DialogTitle>Branded proposal — 2 pages</DialogTitle>
           <DialogDescription>
             A ready-to-send PDF with your branding, the rooftop satellite view and the full
-            business case. Your details are saved locally for next time.
+            business case. The proposal language defaults to the lead’s country — change it here
+            if needed. Your details are saved locally for next time.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Proposal language</Label>
+            <Select value={language} onValueChange={(v) => setLanguage(v as OutreachLanguage)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SUPPORTED_LANGUAGES.map((l) => (
+                  <SelectItem key={l.code} value={l.code}>
+                    <span className="inline-flex items-center gap-2">
+                      <span>{l.flag}</span>
+                      <span>{l.label}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Your name *</Label>
@@ -166,7 +210,7 @@ export function ProposalButton({
             {busy ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating…
+                Generating...
               </>
             ) : (
               <>

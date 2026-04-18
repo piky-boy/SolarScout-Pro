@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { computeBusinessCase } from '@/lib/outreach'
+import { computeBusinessCase, defaultLanguageForCountry } from '@/lib/outreach'
 import { renderProposalHtml } from '@/lib/proposal-html'
 import {
   extractPanelLayoutFromRawJson,
@@ -13,6 +13,16 @@ import {
   cropSolarImageryToBuildingBBox,
   drawPinOnPng,
 } from '@/lib/solar-imagery'
+import {
+  formatProposalDate,
+  type ProposalLanguage,
+} from '@/lib/proposal-i18n'
+
+const SUPPORTED_PROPOSAL_LANGUAGES: readonly ProposalLanguage[] = ['en', 'es', 'pt', 'ro', 'sq'] as const
+
+function isSupportedLanguage(v: unknown): v is ProposalLanguage {
+  return typeof v === 'string' && (SUPPORTED_PROPOSAL_LANGUAGES as readonly string[]).includes(v)
+}
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -86,12 +96,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       senderCompany?: string
       senderEmail?: string
       senderPhone?: string
+      language?: string
     }
 
     const senderName = (body.senderName || lead.user?.name || 'Your name').toString().slice(0, 120)
     const senderCompany = (body.senderCompany || 'SolarScout Pro').toString().slice(0, 120)
     const senderEmail = (body.senderEmail || lead.user?.email || '').toString().slice(0, 120) || null
     const senderPhone = (body.senderPhone || '').toString().slice(0, 60) || null
+
+    // Resolve the output language. Priority:
+    //   1. Explicit user selection (from the Generate Proposal dialog)
+    //   2. The country's native language (defaultLanguageForCountry)
+    //   3. English
+    const language: ProposalLanguage = isSupportedLanguage(body.language)
+      ? body.language
+      : (defaultLanguageForCountry(lead.country) as ProposalLanguage)
 
     const businessCase = computeBusinessCase({
       country: lead.country,
@@ -255,11 +274,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       panelSvgOverride,
       panelCountOverride,
       imageAspectRatio,
-      generatedAt: new Date().toLocaleDateString('en-GB', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      }),
+      language,
+      generatedAt: formatProposalDate(new Date(), language),
     })
 
     // Step 1: create request

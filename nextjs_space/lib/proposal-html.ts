@@ -5,6 +5,11 @@
  * because the html2pdf service may not resolve them reliably). We use a
  * Mapbox Static Image API URL for the satellite photo of the roof, which works
  * from any server-side rendering context since it's a plain image URL.
+ *
+ * This template is localised via `lib/proposal-i18n.ts`. The renderer picks a
+ * language from the `ProposalData.language` field; when absent it falls back
+ * to English. The API route sets the language from the user's selection in
+ * the Generate Proposal dialog, defaulting to the country's native language.
  */
 
 import type { BusinessCase } from './outreach'
@@ -12,6 +17,11 @@ import {
   renderPanelArraySvg,
   type PanelLayoutInput,
 } from './proposal-panels'
+import {
+  getProposalStrings,
+  getProposalLocale,
+  type ProposalLanguage,
+} from './proposal-i18n'
 
 export interface ProposalData {
   lead: {
@@ -73,6 +83,12 @@ export interface ProposalData {
    */
   imageAspectRatio?: number | null
   generatedAt: string
+  /**
+   * Output language for the proposal. Defaults to 'en' when not supplied.
+   * Accepted values match `SUPPORTED_LANGUAGES` in lib/outreach.ts
+   * (en, es, pt, ro, sq).
+   */
+  language?: ProposalLanguage | null
 }
 
 function escape(input: string | null | undefined): string {
@@ -85,17 +101,17 @@ function escape(input: string | null | undefined): string {
     .replace(/'/g, '&#39;')
 }
 
-function num(n: number | null | undefined, decimals = 0): string {
+function num(n: number | null | undefined, decimals = 0, locale?: string): string {
   if (n === null || n === undefined || !isFinite(n)) return '–'
-  return n.toLocaleString(undefined, {
+  return n.toLocaleString(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })
 }
 
-function eur(n: number | null | undefined): string {
+function eur(n: number | null | undefined, locale?: string): string {
   if (n === null || n === undefined || !isFinite(n)) return '–'
-  return '€' + Math.round(n).toLocaleString()
+  return '€' + Math.round(n).toLocaleString(locale)
 }
 
 /**
@@ -172,8 +188,28 @@ function computePanelOverlay(lead: ProposalData['lead']): {
 }
 
 export function renderProposalHtml(data: ProposalData): string {
-  const { lead, businessCase, senderName, senderCompany, senderEmail, senderPhone, satelliteImageUrl, satelliteImageUrlClean, panelLayout, panelSvgOverride, panelCountOverride, imageAspectRatio, generatedAt } = data
-  const displayName = lead.businessName || 'Commercial rooftop'
+  const {
+    lead,
+    businessCase,
+    senderName,
+    senderCompany,
+    senderEmail,
+    senderPhone,
+    satelliteImageUrl,
+    satelliteImageUrlClean,
+    panelLayout,
+    panelSvgOverride,
+    panelCountOverride,
+    imageAspectRatio,
+    generatedAt,
+    language,
+  } = data
+
+  const lang: ProposalLanguage = (language ?? 'en') as ProposalLanguage
+  const t = getProposalStrings(lang)
+  const locale = getProposalLocale(lang)
+
+  const displayName = lead.businessName || t.fallbackBusinessName
   const addr = lead.address || `${lead.latitude.toFixed(5)}, ${lead.longitude.toFixed(5)}`
   const city = [lead.city, lead.country].filter(Boolean).join(', ')
   const hasRealSolar = lead.solarApiStatus === 'OK' && !!lead.solarYearlyEnergyKwh
@@ -226,8 +262,35 @@ export function renderProposalHtml(data: ProposalData): string {
     ? 'ba-img ba-img-fit'
     : 'ba-img'
 
+  // Strings used in multiple places
+  const buildingDescriptor = lead.buildingType || lead.businessType || t.fallbackLocationDescriptor
+  const cityClause = city ? ` ${lang === 'en' ? 'in' : lang === 'es' ? 'en' : lang === 'pt' ? 'em' : lang === 'ro' ? 'din' : 'në'} ${escape(city)}` : ''
+  const systemKwpStr = businessCase ? businessCase.systemKwp.toFixed(1) : 'TBD'
+  const annualProdKwhStr = businessCase ? num(businessCase.annualProductionKwh, 0, locale) : 'TBD'
+  const priceStr = businessCase ? businessCase.electricityPrice.toFixed(2) : '0.20'
+  const annualSavingsStr = businessCase ? eur(businessCase.annualSavingsEur, locale) : 'TBD'
+  const paybackStr = businessCase ? businessCase.paybackYears.toFixed(1) : 'TBD'
+  const lifetimeSavingsStr = businessCase ? eur(businessCase.lifetimeSavingsEur, locale) : 'TBD'
+
+  const withPanelsCaption = t.withPanelsTemplate({
+    count: num(displayedPanelCount, 0, locale),
+    kwp: overlayKwp ? overlayKwp.toFixed(1) : undefined,
+    isEstimate: overlayIsEstimate,
+  })
+
+  const narrativeHtml = t.narrativeTemplate({
+    buildingDescriptor: escape(buildingDescriptor),
+    cityClause,
+    systemKwp: systemKwpStr,
+    annualProductionKwh: annualProdKwhStr,
+    electricityPrice: priceStr,
+    annualSavings: annualSavingsStr,
+    paybackYears: paybackStr,
+    lifetimeSavings: lifetimeSavingsStr,
+  })
+
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${escape(lang)}">
 <head>
 <meta charset="utf-8" />
 <title>Solar proposal — ${escape(displayName)}</title>
@@ -297,7 +360,6 @@ export function renderProposalHtml(data: ProposalData): string {
     transform-origin: center center;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
   }
-
   /* Real-panel SVG overlay (pixel-accurate, from Google Solar API) */
   .panel-svg {
     position: absolute;
@@ -322,77 +384,77 @@ export function renderProposalHtml(data: ProposalData): string {
     <span class="brand-dot">☀</span>
     <div>
       <div class="brand-name">${escape(senderCompany)}</div>
-      <div class="brand-tag">Commercial rooftop solar • Proposal</div>
+      <div class="brand-tag">${escape(t.brandTagPage1)}</div>
     </div>
   </div>
 
   <div class="hero">
-    <div class="eyebrow">Rooftop solar proposal</div>
+    <div class="eyebrow">${escape(t.heroEyebrow)}</div>
     <div class="title">${escape(displayName)}</div>
     <div class="addr">${escape(addr)}${city ? ' — ' + escape(city) : ''}</div>
     <div style="margin-top:8px">
       ${lead.businessType ? `<span class="badge badge-amber">${escape(lead.businessType)}</span>` : ''}
-      ${hasRealSolar ? '<span class="badge badge-amber" style="margin-left:6px">Google Solar API verified</span>' : '<span class="badge badge-emerald" style="margin-left:6px">Preliminary estimate</span>'}
-      ${lead.dataSource === 'GOOGLE_PLACES' || lead.dataSource === 'HYBRID' ? '<span class="badge badge-blue" style="margin-left:6px">Google Places data</span>' : ''}
+      ${hasRealSolar ? `<span class="badge badge-amber" style="margin-left:6px">${escape(t.solarVerified)}</span>` : `<span class="badge badge-emerald" style="margin-left:6px">${escape(t.preliminaryEstimate)}</span>`}
+      ${lead.dataSource === 'GOOGLE_PLACES' || lead.dataSource === 'HYBRID' ? `<span class="badge badge-blue" style="margin-left:6px">${escape(t.googlePlacesData)}</span>` : ''}
     </div>
   </div>
 
   <div class="section">
-    <h3>Rooftop visualization — before &amp; after</h3>
+    <h3>${escape(t.visualizationTitle)}</h3>
     <div class="ba-wrap" style="margin-top:8px">
       <div class="ba-card">
         <div class="ba-imgbox" style="${imgBoxStyle}">
-          ${beforeImg ? `<img class="${imgCssClass}" src="${escape(beforeImg)}" alt="Current rooftop satellite view" />` : '<div class="ba-img-empty">Satellite image unavailable</div>'}
-          <span class="ba-label">Before</span>
+          ${beforeImg ? `<img class="${imgCssClass}" src="${escape(beforeImg)}" alt="Current rooftop satellite view" />` : `<div class="ba-img-empty">${escape(t.imageUnavailable)}</div>`}
+          <span class="ba-label">${escape(t.beforeLabel)}</span>
         </div>
-        <div class="ba-caption"><strong>Current rooftop</strong> — ${num(lead.roofAreaSqm)} m² of usable surface</div>
+        <div class="ba-caption"><strong>${escape(t.currentRooftop)}</strong> — ${num(lead.roofAreaSqm, 0, locale)} ${escape(t.usableSurfaceSuffix)}</div>
       </div>
       <div class="ba-card">
         <div class="ba-imgbox" style="${imgBoxStyle}">
-          ${afterImg ? `<img class="${imgCssClass}" src="${escape(afterImg)}" alt="Rooftop with solar panels" />` : '<div class="ba-img-empty">Satellite image unavailable</div>'}
+          ${afterImg ? `<img class="${imgCssClass}" src="${escape(afterImg)}" alt="Rooftop with solar panels" />` : `<div class="ba-img-empty">${escape(t.imageUnavailable)}</div>`}
           ${hasRealPanelSvg ? realPanelSvg : `<div class="panel-wrap">${panelGridHtml(overlay!.cols, overlay!.rows, overlay!.widthPct, overlay!.heightPct)}</div>`}
-          <span class="ba-label after">After</span>
+          <span class="ba-label after">${escape(t.afterLabel)}</span>
         </div>
-        <div class="ba-caption"><strong>With ${overlayIsEstimate ? '~' : ''}${num(displayedPanelCount)} solar panels</strong>${overlayKwp ? ' — ' + overlayKwp.toFixed(1) + ' kWp system' + (overlayIsEstimate ? ' (estimated)' : '') : ''}</div>
+        <div class="ba-caption">${withPanelsCaption}</div>
       </div>
     </div>
   </div>
 
   <div class="section">
-    <h3>Business case</h3>
+    <h3>${escape(t.businessCaseTitle)}</h3>
     <div class="grid-4" style="margin-top:6px">
       <div class="kpi">
-        <div class="label">System size</div>
+        <div class="label">${escape(t.kpiSystemSize)}</div>
         <div class="value">${businessCase ? businessCase.systemKwp.toFixed(1) + ' kWp' : '–'}</div>
-        <div class="sub">${businessCase ? num(businessCase.annualProductionKwh) + ' kWh / yr' : ''}</div>
+        <div class="sub">${businessCase ? num(businessCase.annualProductionKwh, 0, locale) + ' ' + escape(t.kwhPerYr) : ''}</div>
       </div>
       <div class="kpi accent">
-        <div class="label">Annual savings</div>
-        <div class="value">${businessCase ? eur(businessCase.annualSavingsEur) : '–'}</div>
-        <div class="sub">@ €${businessCase ? businessCase.electricityPrice.toFixed(2) : '0.20'} / kWh</div>
+        <div class="label">${escape(t.kpiAnnualSavings)}</div>
+        <div class="value">${businessCase ? eur(businessCase.annualSavingsEur, locale) : '–'}</div>
+        <div class="sub">${escape(t.kpiAnnualSavingsSubTemplate(businessCase ? businessCase.electricityPrice.toFixed(2) : '0.20'))}</div>
       </div>
       <div class="kpi">
-        <div class="label">Payback</div>
-        <div class="value">${businessCase ? businessCase.paybackYears.toFixed(1) + ' yrs' : '–'}</div>
-        <div class="sub">${businessCase ? eur(businessCase.systemCostEur) + ' install' : ''}</div>
+        <div class="label">${escape(t.kpiPayback)}</div>
+        <div class="value">${businessCase ? businessCase.paybackYears.toFixed(1) + ' ' + escape(t.yrsShort) : '–'}</div>
+        <div class="sub">${businessCase ? escape(t.kpiPaybackSubTemplate(eur(businessCase.systemCostEur, locale))) : ''}</div>
       </div>
       <div class="kpi accent">
-        <div class="label">25-year ROI</div>
-        <div class="value">${businessCase ? eur(businessCase.lifetimeSavingsEur) : '–'}</div>
-        <div class="sub">${businessCase && businessCase.co2TonnesPerYear > 0 ? businessCase.co2TonnesPerYear.toFixed(1) + ' t CO₂ / yr' : ''}</div>
+        <div class="label">${escape(t.kpi25YearRoi)}</div>
+        <div class="value">${businessCase ? eur(businessCase.lifetimeSavingsEur, locale) : '–'}</div>
+        <div class="sub">${businessCase && businessCase.co2TonnesPerYear > 0 ? businessCase.co2TonnesPerYear.toFixed(1) + ' ' + escape(t.tCo2PerYr) : ''}</div>
       </div>
     </div>
   </div>
 
   <div class="section">
     <div class="narrative">
-      Based on our assessment of this ${escape(lead.buildingType || lead.businessType || 'commercial building')}${city ? ' in ' + escape(city) : ''}, a rooftop PV system of approximately <strong>${businessCase ? businessCase.systemKwp.toFixed(1) + ' kWp' : 'TBD'}</strong> would produce roughly <strong>${businessCase ? num(businessCase.annualProductionKwh) + ' kWh per year</strong>' : 'TBD'}. Assuming a commercial self-consumption ratio of 70% and the local electricity tariff of €${businessCase ? businessCase.electricityPrice.toFixed(2) : '0.20'}/kWh, this translates to <strong>${businessCase ? eur(businessCase.annualSavingsEur) + ' of annual savings</strong>' : 'significant annual savings</strong>'} with a payback period of <strong>${businessCase ? businessCase.paybackYears.toFixed(1) + ' years' : 'TBD'}</strong>. Over a 25-year panel lifetime the system delivers a net return of <strong>${businessCase ? eur(businessCase.lifetimeSavingsEur) : 'TBD'}</strong>.
+      ${narrativeHtml}
     </div>
   </div>
 
   <div class="footer">
     <span>${escape(senderCompany)}</span>
-    <span>Page 1 / 2 • Generated ${escape(generatedAt)}</span>
+    <span>${escape(t.footerPageTemplate(1, 2, generatedAt))}</span>
   </div>
 </div>
 
@@ -401,75 +463,75 @@ export function renderProposalHtml(data: ProposalData): string {
     <span class="brand-dot">☀</span>
     <div>
       <div class="brand-name">${escape(senderCompany)}</div>
-      <div class="brand-tag">Solar specifications • Property details</div>
+      <div class="brand-tag">${escape(t.brandTagPage2)}</div>
     </div>
   </div>
 
   <div class="grid-2">
     <div>
-      <h2>Rooftop &amp; property</h2>
-      <div class="row"><span class="k">Business</span><span class="v">${escape(displayName)}</span></div>
-      <div class="row"><span class="k">Type</span><span class="v">${escape(lead.businessType || '–')}</span></div>
-      <div class="row"><span class="k">Building</span><span class="v">${escape(lead.buildingType || '–')}</span></div>
-      <div class="row"><span class="k">Address</span><span class="v">${escape(addr)}</span></div>
-      <div class="row"><span class="k">City</span><span class="v">${escape(city || '–')}</span></div>
-      <div class="row"><span class="k">Coordinates</span><span class="v" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace">${lead.latitude.toFixed(5)}, ${lead.longitude.toFixed(5)}</span></div>
-      <div class="row"><span class="k">Roof area (OSM)</span><span class="v">${num(lead.roofAreaSqm)} m²</span></div>
-      ${typeof lead.googleRating === 'number' ? `<div class="row"><span class="k">Google rating</span><span class="v">★ ${lead.googleRating.toFixed(1)}</span></div>` : ''}
-      ${lead.contactPhone ? `<div class="row"><span class="k">Phone</span><span class="v">${escape(lead.contactPhone)}</span></div>` : ''}
-      ${lead.contactEmail ? `<div class="row"><span class="k">Email</span><span class="v">${escape(lead.contactEmail)}</span></div>` : ''}
-      ${lead.website ? `<div class="row"><span class="k">Website</span><span class="v">${escape(lead.website)}</span></div>` : ''}
+      <h2>${escape(t.page2PropertyTitle)}</h2>
+      <div class="row"><span class="k">${escape(t.fieldBusiness)}</span><span class="v">${escape(displayName)}</span></div>
+      <div class="row"><span class="k">${escape(t.fieldType)}</span><span class="v">${escape(lead.businessType || '–')}</span></div>
+      <div class="row"><span class="k">${escape(t.fieldBuilding)}</span><span class="v">${escape(lead.buildingType || '–')}</span></div>
+      <div class="row"><span class="k">${escape(t.fieldAddress)}</span><span class="v">${escape(addr)}</span></div>
+      <div class="row"><span class="k">${escape(t.fieldCity)}</span><span class="v">${escape(city || '–')}</span></div>
+      <div class="row"><span class="k">${escape(t.fieldCoordinates)}</span><span class="v" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace">${lead.latitude.toFixed(5)}, ${lead.longitude.toFixed(5)}</span></div>
+      <div class="row"><span class="k">${escape(t.fieldRoofAreaOsm)}</span><span class="v">${num(lead.roofAreaSqm, 0, locale)} m²</span></div>
+      ${typeof lead.googleRating === 'number' ? `<div class="row"><span class="k">${escape(t.fieldGoogleRating)}</span><span class="v">★ ${lead.googleRating.toFixed(1)}</span></div>` : ''}
+      ${lead.contactPhone ? `<div class="row"><span class="k">${escape(t.fieldPhone)}</span><span class="v">${escape(lead.contactPhone)}</span></div>` : ''}
+      ${lead.contactEmail ? `<div class="row"><span class="k">${escape(t.fieldEmail)}</span><span class="v">${escape(lead.contactEmail)}</span></div>` : ''}
+      ${lead.website ? `<div class="row"><span class="k">${escape(t.fieldWebsite)}</span><span class="v">${escape(lead.website)}</span></div>` : ''}
     </div>
     <div>
-      <h2>Solar specification</h2>
-      <div class="row"><span class="k">Data source</span><span class="v">${hasRealSolar ? 'Google Solar API' : 'Estimate from roof area'}</span></div>
-      ${lead.solarImageryQuality ? `<div class="row"><span class="k">Imagery quality</span><span class="v">${escape(lead.solarImageryQuality)}</span></div>` : ''}
-      ${lead.solarImageryDate ? `<div class="row"><span class="k">Imagery date</span><span class="v">${escape(lead.solarImageryDate)}</span></div>` : ''}
-      <div class="row"><span class="k">Max panels</span><span class="v">${num(lead.solarMaxPanelCount)}</span></div>
-      <div class="row"><span class="k">Max array area</span><span class="v">${num(lead.solarMaxArrayAreaSqm)} m²</span></div>
-      <div class="row"><span class="k">System (DC)</span><span class="v">${panelKw ? panelKw.toFixed(1) + ' kWp' : '–'}</span></div>
-      <div class="row"><span class="k">Annual production</span><span class="v">${num(lead.solarYearlyEnergyKwh)} kWh / yr</span></div>
-      <div class="row"><span class="k">Peak sunshine</span><span class="v">${num(lead.solarMaxSunshineHours)} h / yr</span></div>
-      <div class="row"><span class="k">Lifetime production</span><span class="v">${lifetimeProductionMwh ? num(lifetimeProductionMwh) + ' MWh' : '–'}</span></div>
-      <div class="row"><span class="k">CO₂ offset</span><span class="v">${lead.solarCarbonOffsetKgYr ? (lead.solarCarbonOffsetKgYr / 1000).toFixed(1) + ' t / yr' : '–'}</span></div>
-      <div class="row"><span class="k">Panel capacity</span><span class="v">${lead.solarPanelCapacityWatts ? lead.solarPanelCapacityWatts + ' W' : '–'}</span></div>
-      <div class="row"><span class="k">Panel lifetime</span><span class="v">${lead.solarPanelLifetimeYears ? lead.solarPanelLifetimeYears + ' years' : '–'}</span></div>
+      <h2>${escape(t.page2SolarTitle)}</h2>
+      <div class="row"><span class="k">${escape(t.fieldDataSource)}</span><span class="v">${escape(hasRealSolar ? t.dataSourceSolar : t.dataSourceEstimate)}</span></div>
+      ${lead.solarImageryQuality ? `<div class="row"><span class="k">${escape(t.fieldImageryQuality)}</span><span class="v">${escape(lead.solarImageryQuality)}</span></div>` : ''}
+      ${lead.solarImageryDate ? `<div class="row"><span class="k">${escape(t.fieldImageryDate)}</span><span class="v">${escape(lead.solarImageryDate)}</span></div>` : ''}
+      <div class="row"><span class="k">${escape(t.fieldMaxPanels)}</span><span class="v">${num(lead.solarMaxPanelCount, 0, locale)}</span></div>
+      <div class="row"><span class="k">${escape(t.fieldMaxArrayArea)}</span><span class="v">${num(lead.solarMaxArrayAreaSqm, 0, locale)} m²</span></div>
+      <div class="row"><span class="k">${escape(t.fieldSystemDc)}</span><span class="v">${panelKw ? panelKw.toFixed(1) + ' kWp' : '–'}</span></div>
+      <div class="row"><span class="k">${escape(t.fieldAnnualProduction)}</span><span class="v">${num(lead.solarYearlyEnergyKwh, 0, locale)} ${escape(t.kwhPerYr)}</span></div>
+      <div class="row"><span class="k">${escape(t.fieldPeakSunshine)}</span><span class="v">${num(lead.solarMaxSunshineHours, 0, locale)} ${escape(t.hPerYrSuffix)}</span></div>
+      <div class="row"><span class="k">${escape(t.fieldLifetimeProduction)}</span><span class="v">${lifetimeProductionMwh ? num(lifetimeProductionMwh, 0, locale) + ' MWh' : '–'}</span></div>
+      <div class="row"><span class="k">${escape(t.fieldCo2Offset)}</span><span class="v">${lead.solarCarbonOffsetKgYr ? (lead.solarCarbonOffsetKgYr / 1000).toFixed(1) + ' ' + escape(t.tPerYrSuffix) : '–'}</span></div>
+      <div class="row"><span class="k">${escape(t.fieldPanelCapacity)}</span><span class="v">${lead.solarPanelCapacityWatts ? lead.solarPanelCapacityWatts + ' W' : '–'}</span></div>
+      <div class="row"><span class="k">${escape(t.fieldPanelLifetime)}</span><span class="v">${lead.solarPanelLifetimeYears ? lead.solarPanelLifetimeYears + ' ' + escape(t.yearsSuffix) : '–'}</span></div>
     </div>
   </div>
 
   <div class="section">
-    <h2>Financial model</h2>
+    <h2>${escape(t.page2FinancialTitle)}</h2>
     <div class="grid-2" style="margin-top:6px">
       <div>
-        <div class="row"><span class="k">Install cost (turn-key)</span><span class="v">${businessCase ? eur(businessCase.systemCostEur) : '–'}</span></div>
-        <div class="row"><span class="k">Electricity tariff</span><span class="v">€${businessCase ? businessCase.electricityPrice.toFixed(2) : '–'} / kWh</span></div>
-        <div class="row"><span class="k">Self-consumption</span><span class="v">${businessCase ? Math.round(businessCase.selfConsumedKwh).toLocaleString() : '–'} kWh / yr</span></div>
-        <div class="row"><span class="k">Assumed self-consumption ratio</span><span class="v">70%</span></div>
+        <div class="row"><span class="k">${escape(t.fieldInstallCost)}</span><span class="v">${businessCase ? eur(businessCase.systemCostEur, locale) : '–'}</span></div>
+        <div class="row"><span class="k">${escape(t.fieldElectricityTariff)}</span><span class="v">€${businessCase ? businessCase.electricityPrice.toFixed(2) : '–'} / kWh</span></div>
+        <div class="row"><span class="k">${escape(t.fieldSelfConsumption)}</span><span class="v">${businessCase ? Math.round(businessCase.selfConsumedKwh).toLocaleString(locale) : '–'} ${escape(t.kwhPerYr)}</span></div>
+        <div class="row"><span class="k">${escape(t.fieldAssumedSelfConsumption)}</span><span class="v">70%</span></div>
       </div>
       <div>
-        <div class="row"><span class="k">Annual savings</span><span class="v">${businessCase ? eur(businessCase.annualSavingsEur) : '–'}</span></div>
-        <div class="row"><span class="k">Payback period</span><span class="v">${businessCase ? businessCase.paybackYears.toFixed(1) + ' years' : '–'}</span></div>
-        <div class="row"><span class="k">System lifetime</span><span class="v">${businessCase ? businessCase.lifetimeYears + ' years' : '–'}</span></div>
-        <div class="row"><span class="k">Net lifetime savings</span><span class="v">${businessCase ? eur(businessCase.lifetimeSavingsEur) : '–'}</span></div>
+        <div class="row"><span class="k">${escape(t.fieldAnnualSavings)}</span><span class="v">${businessCase ? eur(businessCase.annualSavingsEur, locale) : '–'}</span></div>
+        <div class="row"><span class="k">${escape(t.fieldPaybackPeriod)}</span><span class="v">${businessCase ? businessCase.paybackYears.toFixed(1) + ' ' + escape(t.yearsSuffix) : '–'}</span></div>
+        <div class="row"><span class="k">${escape(t.fieldSystemLifetime)}</span><span class="v">${businessCase ? businessCase.lifetimeYears + ' ' + escape(t.yearsSuffix) : '–'}</span></div>
+        <div class="row"><span class="k">${escape(t.fieldNetLifetimeSavings)}</span><span class="v">${businessCase ? eur(businessCase.lifetimeSavingsEur, locale) : '–'}</span></div>
       </div>
     </div>
   </div>
 
   <div class="cta">
-    <h2>Next step: a 15-minute site review</h2>
-    <p>We'd like to validate these numbers with a short on-site visit or video call to review the roof, current electricity bills, and any grid-connection constraints. We'll then send a fixed-price quote within 48 hours.</p>
+    <h2>${escape(t.ctaTitle)}</h2>
+    <p>${escape(t.ctaBody)}</p>
     <div class="sender">
       <div><strong>${escape(senderName)}</strong><br/>${escape(senderCompany)}</div>
-      ${senderEmail ? `<div><strong>Email</strong><br/>${escape(senderEmail)}</div>` : ''}
-      ${senderPhone ? `<div><strong>Phone</strong><br/>${escape(senderPhone)}</div>` : ''}
+      ${senderEmail ? `<div><strong>${escape(t.fieldEmail)}</strong><br/>${escape(senderEmail)}</div>` : ''}
+      ${senderPhone ? `<div><strong>${escape(t.fieldPhone)}</strong><br/>${escape(senderPhone)}</div>` : ''}
     </div>
   </div>
 
-  <p class="disclaimer">Figures in this proposal are based on ${hasRealSolar ? 'Google Solar API rooftop data and' : 'preliminary roof-area estimates and'} assumed commercial electricity tariffs. Actual system size, production and savings depend on site-specific factors including roof structure, shading, orientation, grid-connection limits, and current electricity contract. A detailed engineering survey is required before any binding proposal. Before/after visualization is illustrative and does not reflect the final panel layout.</p>
+  <p class="disclaimer">${escape(t.disclaimer(hasRealSolar))}</p>
 
   <div class="footer">
     <span>${escape(senderCompany)}</span>
-    <span>Page 2 / 2 • Generated ${escape(generatedAt)}</span>
+    <span>${escape(t.footerPageTemplate(2, 2, generatedAt))}</span>
   </div>
 </div>
 </body>

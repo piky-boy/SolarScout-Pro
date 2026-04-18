@@ -69,6 +69,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
             <ProposalButton
               leadId={lead.id}
               businessName={lead.businessName}
+              country={lead.country}
               defaultSenderName={session.user.name ?? null}
               defaultSenderEmail={session.user.email ?? null}
             />
