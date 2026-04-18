@@ -1,0 +1,148 @@
+import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
+
+const prisma = new PrismaClient()
+
+async function main() {
+  const testEmail = 'john@doe.com'
+  const testPassword = 'johndoe123'
+  const hashed = await bcrypt.hash(testPassword, 10)
+
+  const user = await prisma.user.upsert({
+    where: { email: testEmail },
+    update: { name: 'John Doe', password: hashed, role: 'ADMIN' },
+    create: {
+      email: testEmail,
+      name: 'John Doe',
+      password: hashed,
+      role: 'ADMIN',
+    },
+  })
+
+  // Seed a handful of realistic commercial leads across the four markets so
+  // a new account has something to explore without waiting on an Overpass call.
+  const sampleLeads = [
+    {
+      osmId: 'seed/ro-bucharest-1',
+      businessName: 'ProLogis Bucharest DC-1',
+      businessType: 'Warehouse',
+      buildingType: 'warehouse',
+      address: 'Bulevardul Theodor Pallady 51, Sector 3',
+      city: 'Bucharest',
+      country: 'Romania',
+      latitude: 44.4173,
+      longitude: 26.1844,
+      roofAreaSqm: 18400,
+      contactPhone: '+40 21 305 2000',
+      contactEmail: 'info@prologis-bucharest.example',
+      website: 'https://example.com/prologis-bucharest',
+    },
+    {
+      osmId: 'seed/es-madrid-1',
+      businessName: 'Mercamadrid Logistics Hub',
+      businessType: 'Logistics',
+      buildingType: 'warehouse',
+      address: 'Avenida de Madrid 19, 28053 Madrid',
+      city: 'Madrid',
+      country: 'Spain',
+      latitude: 40.3822,
+      longitude: -3.6501,
+      roofAreaSqm: 26100,
+      contactPhone: '+34 91 785 0000',
+      contactEmail: 'info@mercamadrid.example',
+      website: 'https://example.com/mercamadrid',
+    },
+    {
+      osmId: 'seed/pt-porto-1',
+      businessName: 'Leixões Industrial Park',
+      businessType: 'Industrial',
+      buildingType: 'industrial',
+      address: 'Avenida da Liberdade 456, Matosinhos',
+      city: 'Porto',
+      country: 'Portugal',
+      latitude: 41.18,
+      longitude: -8.695,
+      roofAreaSqm: 12400,
+      contactPhone: '+351 22 999 0000',
+      contactEmail: 'hello@leixoes-park.example',
+      website: null,
+    },
+    {
+      osmId: 'seed/al-tirana-1',
+      businessName: 'Tirana Logistics Center',
+      businessType: 'Warehouse',
+      buildingType: 'warehouse',
+      address: 'Rruga e Durrësit 123, Tirana',
+      city: 'Tirana',
+      country: 'Albania',
+      latitude: 41.323,
+      longitude: 19.79,
+      roofAreaSqm: 8600,
+      contactPhone: '+355 4 224 5678',
+      contactEmail: null,
+      website: null,
+    },
+    {
+      osmId: 'seed/es-barcelona-1',
+      businessName: 'Barcelona Free Zone Factory',
+      businessType: 'Factory',
+      buildingType: 'factory',
+      address: 'Carrer del Foc 45, Zona Franca, Barcelona',
+      city: 'Barcelona',
+      country: 'Spain',
+      latitude: 41.342,
+      longitude: 2.128,
+      roofAreaSqm: 15800,
+      contactPhone: '+34 93 445 0000',
+      contactEmail: 'contact@bcn-factory.example',
+      website: null,
+    },
+    {
+      osmId: 'seed/ro-cluj-1',
+      businessName: 'Cluj Auto Components',
+      businessType: 'Factory',
+      buildingType: 'industrial',
+      address: 'Strada Fabricii de Zahăr 1, Cluj-Napoca',
+      city: 'Cluj-Napoca',
+      country: 'Romania',
+      latitude: 46.77,
+      longitude: 23.6,
+      roofAreaSqm: 9750,
+      contactPhone: '+40 264 123 456',
+      contactEmail: null,
+      website: null,
+    },
+  ]
+
+  for (const l of sampleLeads) {
+    await prisma.lead.upsert({
+      where: { userId_osmId: { userId: user.id, osmId: l.osmId } },
+      update: {},
+      create: { ...l, userId: user.id },
+    })
+  }
+
+  await prisma.searchHistory.upsert({
+    where: { id: 'seed-history-1' },
+    update: {},
+    create: {
+      id: 'seed-history-1',
+      userId: user.id,
+      locationSearched: 'Madrid, Spain',
+      country: 'Spain',
+      leadsFound: 2,
+    },
+  })
+
+  console.log('Seeded user:', user.email)
+  console.log('Seeded leads:', sampleLeads.length)
+}
+
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })
