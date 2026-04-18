@@ -15,7 +15,7 @@ const MATCH_RADIUS_M = 40
 
 // Countries where OSM is rich enough to be our primary source; Places is
 // then used only to enrich with contact data.
-const OSM_PRIMARY_COUNTRIES = new Set(['ES', 'PT'])
+const OSM_PRIMARY_COUNTRIES = new Set(['ES', 'PT', 'GB'])
 
 interface MergedLead {
   // Identity
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
     const geo = geoResults?.[0]
     if (!geo) {
       return NextResponse.json(
-        { error: 'No matching location found in supported countries (RO, ES, PT, AL).' },
+        { error: 'No matching location found in supported countries (RO, ES, PT, AL, GB).' },
         { status: 404 },
       )
     }

@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     template: '%s | SolarScout Pro',
   },
   description:
-    'SolarScout Pro automatically detects commercial buildings and warehouses across Romania, Spain, Portugal and Albania — turning satellite data into ready-to-contact solar leads.',
+    'SolarScout Pro automatically detects commercial buildings and warehouses across Romania, Spain, Portugal, Albania and the United Kingdom — turning satellite data into ready-to-contact solar leads.',
   keywords: [
     'solar leads',
     'solar lead generation',
@@ -29,6 +29,8 @@ export const metadata: Metadata = {
     'Spain solar',
     'Portugal solar',
     'Albania solar',
+    'UK solar',
+    'United Kingdom solar',
     'satellite building detection',
   ],
   icons: {
@@ -38,7 +40,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'SolarScout Pro — Automated Solar Lead Generation for Europe',
     description:
-      'Turn satellite data into ready-to-contact solar leads across Romania, Spain, Portugal and Albania.',
+      'Turn satellite data into ready-to-contact solar leads across Romania, Spain, Portugal, Albania and the United Kingdom.',
     images: ['/og-image.png'],
     type: 'website',
   },
@@ -46,7 +48,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'SolarScout Pro',
     description:
-      'Automated solar lead generation for commercial buildings across Romania, Spain, Portugal and Albania.',
+      'Automated solar lead generation for commercial buildings across Romania, Spain, Portugal, Albania and the United Kingdom.',
     images: ['/og-image.png'],
   },
 }

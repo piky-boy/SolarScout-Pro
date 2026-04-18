@@ -15,6 +15,7 @@ export const ELECTRICITY_PRICE_EUR_PER_KWH: Record<string, number> = {
   PT: 0.2,
   RO: 0.18,
   AL: 0.16,
+  GB: 0.28, // UK commercial non-domestic ~ £0.24/kWh
 }
 
 export const DEFAULT_ELECTRICITY_PRICE_EUR_PER_KWH = 0.2
@@ -63,8 +64,13 @@ export function computeBusinessCase(input: {
   // Annual production
   let annualProductionKwh = input.yearlyEnergyKwh ?? 0
   if (!annualProductionKwh) {
-    // Fallback: ~1,400 kWh/kWp/year for Iberia, less for Romania/Albania
-    const specificYield = input.country === 'RO' || input.country === 'AL' ? 1150 : 1400
+    // Fallback specific yield (kWh/kWp/year) — depends on latitude/irradiance
+    //   Iberia (ES/PT):            ~1,400
+    //   Romania/Albania:           ~1,150
+    //   United Kingdom:            ~950 (lower irradiance, overcast climate)
+    let specificYield = 1400
+    if (input.country === 'RO' || input.country === 'AL') specificYield = 1150
+    if (input.country === 'GB') specificYield = 950
     annualProductionKwh = systemKwp * specificYield
   }
 
@@ -123,6 +129,8 @@ export function defaultLanguageForCountry(country?: string | null): OutreachLang
       return 'ro'
     case 'AL':
       return 'sq'
+    case 'GB':
+      return 'en'
     default:
       return 'en'
   }

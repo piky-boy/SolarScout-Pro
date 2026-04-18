@@ -4,6 +4,7 @@ export const SUPPORTED_COUNTRIES = [
   { code: 'ES', name: 'Spain', center: [-3.7492, 40.4637], zoom: 6 },
   { code: 'PT', name: 'Portugal', center: [-8.2245, 39.3999], zoom: 6 },
   { code: 'AL', name: 'Albania', center: [20.1683, 41.1533], zoom: 7 },
+  { code: 'GB', name: 'United Kingdom', center: [-2.5, 54.0], zoom: 5 },
 ] as const
 
 export const COUNTRY_NAME_BY_CODE: Record<string, string> = SUPPORTED_COUNTRIES.reduce(

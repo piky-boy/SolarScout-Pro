@@ -16,7 +16,7 @@ export async function mapboxGeocode(query: string, limit = 5): Promise<GeocodeRe
   url.searchParams.set('access_token', MAPBOX_TOKEN)
   url.searchParams.set('limit', String(limit))
   url.searchParams.set('types', 'region,district,place,locality,neighborhood,postcode')
-  url.searchParams.set('country', 'ro,es,pt,al')
+  url.searchParams.set('country', 'ro,es,pt,al,gb')
   url.searchParams.set('autocomplete', 'true')
 
   const res = await fetch(url.toString(), { cache: 'no-store' })

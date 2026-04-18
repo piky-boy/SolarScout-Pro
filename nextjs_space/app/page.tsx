@@ -18,7 +18,7 @@ import { LandingHero } from './_components/landing-hero'
 export const metadata = {
   title: 'Automated Solar Lead Generation for Europe',
   description:
-    'Find warehouses, factories and commercial rooftops across Romania, Spain, Portugal and Albania in minutes. Export qualified solar leads to CSV or Excel.',
+    'Find warehouses, factories and commercial rooftops across Romania, Spain, Portugal, Albania and the United Kingdom in minutes. Export qualified solar leads to CSV or Excel.',
 }
 
 const features = [
@@ -56,7 +56,7 @@ const features = [
     icon: Sparkles,
     title: 'Built for Europe',
     description:
-      'Purpose-built for the solar boom in Romania, Spain, Portugal and Albania — with localised results and geography.',
+      'Purpose-built for the solar boom in Romania, Spain, Portugal, Albania and the United Kingdom — with localised results and geography.',
   },
 ]
 
@@ -64,7 +64,7 @@ const steps = [
   {
     number: '01',
     title: 'Enter a city or region',
-    description: 'Type any location in Romania, Spain, Portugal or Albania. Autocomplete suggests the best match.',
+    description: 'Type any location in Romania, Spain, Portugal, Albania or the United Kingdom. Autocomplete suggests the best match.',
   },
   {
     number: '02',
@@ -84,6 +84,7 @@ const markets = [
   { code: 'ES', name: 'Spain', flag: '🇪🇸' },
   { code: 'PT', name: 'Portugal', flag: '🇵🇹' },
   { code: 'AL', name: 'Albania', flag: '🇦🇱' },
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
 ]
 
 export default function HomePage() {

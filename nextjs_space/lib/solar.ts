@@ -3,10 +3,11 @@
  * Docs: https://developers.google.com/maps/documentation/solar/building-insights
  *
  * Coverage in our target markets (as of 2025):
- * - Spain:    MEDIUM quality ✅
- * - Portugal: MEDIUM quality ✅
- * - Romania:  not officially covered ❌ (may work with BASE / EXPANDED_COVERAGE)
- * - Albania:  not officially covered ❌ (may work with BASE / EXPANDED_COVERAGE)
+ * - Spain:          MEDIUM quality ✅
+ * - Portugal:       MEDIUM quality ✅
+ * - United Kingdom: HIGH quality   ✅ (excellent building-level coverage)
+ * - Romania:        not officially covered ❌ (may work with BASE / EXPANDED_COVERAGE)
+ * - Albania:        not officially covered ❌ (may work with BASE / EXPANDED_COVERAGE)
  */
 
 export type ImageryQuality = 'HIGH' | 'MEDIUM' | 'LOW' | 'BASE'

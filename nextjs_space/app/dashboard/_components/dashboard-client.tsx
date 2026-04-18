@@ -222,8 +222,8 @@ export function DashboardClient({ userName, initialTotalLeads, initialRecentSear
               Scout your next solar lead
             </h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-              Pick a city in Romania, Spain, Portugal or Albania and SolarScout will auto-detect commercial buildings
-              and warehouses on its satellite-powered map.
+              Pick a city in Romania, Spain, Portugal, Albania or the United Kingdom and SolarScout will auto-detect
+              commercial buildings and warehouses on its satellite-powered map.
             </p>
           </div>
           <div className="flex items-center gap-2">

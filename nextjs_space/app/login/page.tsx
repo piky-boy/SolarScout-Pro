@@ -44,7 +44,7 @@ export default async function LoginPage() {
               Welcome back to <span className="text-amber-500">SolarScout</span>
             </h1>
             <p className="mt-4 max-w-md text-muted-foreground">
-              Sign in to continue scouting commercial rooftops across Romania, Spain, Portugal and Albania. Your leads, your exports, your pipeline.
+              Sign in to continue scouting commercial rooftops across Romania, Spain, Portugal, Albania and the United Kingdom. Your leads, your exports, your pipeline.
             </p>
             <ul className="mt-8 space-y-3 text-sm">
               {[

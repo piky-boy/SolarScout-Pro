@@ -34,8 +34,8 @@ export function LandingHero() {
           across Europe.
         </h1>
         <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-          SolarScout Pro automatically detects warehouses, factories and commercial rooftops in Romania, Spain, Portugal
-          and Albania — with full business data, estimated roof area and one-click CSV / Excel export.
+          SolarScout Pro automatically detects warehouses, factories and commercial rooftops in Romania, Spain, Portugal,
+          Albania and the United Kingdom — with full business data, estimated roof area and one-click CSV / Excel export.
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Link href={ctaHref}>
