@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { LeadDetailMap } from './_components/lead-detail-map'
 import { LeadNotesForm } from './_components/lead-notes-form'
+import { SolarInsights } from './_components/solar-insights'
 
 export const dynamic = 'force-dynamic'
 
@@ -118,6 +119,10 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                 <Stat icon={CalendarDays} label="Added" value={new Date(lead.createdAt).toLocaleString()} />
               </CardContent>
             </Card>
+          </div>
+
+          <div className="mt-6">
+            <SolarInsights leadId={lead.id} />
           </div>
 
           <div className="mt-6">

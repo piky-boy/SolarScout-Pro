@@ -31,6 +31,7 @@ import {
   ExternalLink,
   Filter,
   Search,
+  Sun,
   Trash2,
   X,
 } from 'lucide-react'
@@ -51,6 +52,10 @@ interface LeadItem {
   website: string | null
   status: string
   createdAt: string
+  solarApiStatus: string | null
+  solarMaxPanelCount: number | null
+  solarYearlyEnergyKwh: number | null
+  solarDataFetchedAt: string | null
 }
 
 interface FilterOption {
@@ -353,6 +358,12 @@ export function LeadsClient({ initialLeads, filterOptions }: LeadsClientProps) {
                   <SortHeader label="City" active={sortKey === 'city'} dir={sortDir} onClick={() => toggleSort('city')} />
                   <SortHeader label="Country" active={sortKey === 'country'} dir={sortDir} onClick={() => toggleSort('country')} />
                   <SortHeader label="Roof (m²)" active={sortKey === 'roofAreaSqm'} dir={sortDir} onClick={() => toggleSort('roofAreaSqm')} align="right" />
+                  <TableHead>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                      <Sun className="h-3 w-3" />
+                      Solar
+                    </span>
+                  </TableHead>
                   <SortHeader label="Added" active={sortKey === 'createdAt'} dir={sortDir} onClick={() => toggleSort('createdAt')} />
                   <TableHead className="w-16 text-right"></TableHead>
                 </TableRow>
@@ -360,7 +371,7 @@ export function LeadsClient({ initialLeads, filterOptions }: LeadsClientProps) {
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-20 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="py-20 text-center text-muted-foreground">
                       {leads.length === 0 ? (
                         <div className="flex flex-col items-center gap-3">
                           <div className="text-sm">No leads yet. Head to the dashboard to scout your first ones.</div>
@@ -409,6 +420,9 @@ export function LeadsClient({ initialLeads, filterOptions }: LeadsClientProps) {
                         <TableCell className="text-right font-mono tabular-nums">
                           {(lead.roofAreaSqm ?? 0).toLocaleString()}
                         </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <SolarCell lead={lead} />
+                        </TableCell>
                         <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                           {new Date(lead.createdAt).toLocaleDateString()}
                         </TableCell>
@@ -429,6 +443,60 @@ export function LeadsClient({ initialLeads, filterOptions }: LeadsClientProps) {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+function SolarCell({ lead }: { lead: LeadItem }) {
+  const status = lead.solarApiStatus
+  if (!status) {
+    return (
+      <Badge variant="outline" className="text-[11px] text-muted-foreground">
+        Not analyzed
+      </Badge>
+    )
+  }
+  if (status === 'OK') {
+    const kwh = lead.solarYearlyEnergyKwh
+    const panels = lead.solarMaxPanelCount
+    const label = kwh
+      ? kwh >= 1000
+        ? `${(kwh / 1000).toFixed(1)} MWh/yr`
+        : `${Math.round(kwh).toLocaleString()} kWh/yr`
+      : panels
+        ? `${panels} panels`
+        : 'Analyzed'
+    return (
+      <Badge className="whitespace-nowrap border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+        <Sun className="mr-1 h-3 w-3" />
+        {label}
+      </Badge>
+    )
+  }
+  if (status === 'NOT_FOUND') {
+    return (
+      <Badge variant="outline" className="text-[11px] text-muted-foreground">
+        Not indexed
+      </Badge>
+    )
+  }
+  if (status === 'NO_COVERAGE') {
+    return (
+      <Badge variant="outline" className="text-[11px] text-muted-foreground">
+        No coverage
+      </Badge>
+    )
+  }
+  if (status === 'UNCONFIGURED') {
+    return (
+      <Badge variant="outline" className="text-[11px] text-muted-foreground">
+        Key needed
+      </Badge>
+    )
+  }
+  return (
+    <Badge variant="outline" className="text-[11px] text-muted-foreground">
+      —
+    </Badge>
   )
 }
 

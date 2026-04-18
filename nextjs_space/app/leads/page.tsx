@@ -18,7 +18,34 @@ export default async function LeadsPage() {
   if (!session?.user || !userId) redirect('/login')
 
   const [leads, countryGroups, cityGroups, typeGroups] = await Promise.all([
-    prisma.lead.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 1000 }),
+    prisma.lead.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 1000,
+      // Omit heavy `solarRawJson` but include summary solar fields
+      select: {
+        id: true,
+        businessName: true,
+        businessType: true,
+        buildingType: true,
+        address: true,
+        city: true,
+        country: true,
+        latitude: true,
+        longitude: true,
+        roofAreaSqm: true,
+        contactPhone: true,
+        contactEmail: true,
+        website: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        solarDataFetchedAt: true,
+        solarApiStatus: true,
+        solarMaxPanelCount: true,
+        solarYearlyEnergyKwh: true,
+      },
+    }),
     prisma.lead.groupBy({
       by: ['country'],
       where: { userId, NOT: { country: null } },
@@ -41,6 +68,9 @@ export default async function LeadsPage() {
       ...l,
       createdAt: l.createdAt?.toISOString?.() ?? String(l.createdAt),
       updatedAt: l.updatedAt?.toISOString?.() ?? String(l.updatedAt),
+      solarDataFetchedAt: l.solarDataFetchedAt
+        ? (l.solarDataFetchedAt.toISOString?.() ?? String(l.solarDataFetchedAt))
+        : null,
     }))
 
   return (
