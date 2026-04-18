@@ -72,15 +72,76 @@ function eur(n: number | null | undefined): string {
 }
 
 /**
- * Build a grid of panel <div>s. The wrapper applies rotation + perspective.
- * We intentionally keep the grid dense (14 cols x 8 rows = 112 panels) so it
- * always reads as a real panel field, regardless of the actual rooftop size.
- * The label below the image carries the true panel count from the Solar API.
+ * Build a grid of panel <div>s sized to reflect the actual array footprint.
+ * Width/height percentages control how much of the satellite image the overlay
+ * covers (rough proxy for real array area vs. the map's ground coverage).
  */
-function panelGridHtml(cols: number, rows: number): string {
+function panelGridHtml(cols: number, rows: number, widthPct: number, heightPct: number): string {
   const cells: string[] = []
   for (let i = 0; i < cols * rows; i++) cells.push('<div class="panel"></div>')
-  return `<div class="panel-array" style="grid-template-columns: repeat(${cols}, 1fr); grid-template-rows: repeat(${rows}, 1fr);">${cells.join('')}</div>`
+  return `<div class="panel-array" style="width:${widthPct.toFixed(1)}%;height:${heightPct.toFixed(1)}%;grid-template-columns: repeat(${cols}, 1fr); grid-template-rows: repeat(${rows}, 1fr);">${cells.join('')}</div>`
+}
+
+/**
+ * Decide the visual shape and size of the panel overlay based on what we know
+ * about the rooftop. We prefer Google Solar API's panel count + array area;
+ * otherwise we estimate from roof area (≈55% usable, ≈2 m² per panel).
+ *
+ * We cap the rendered grid at MAX_CELLS so huge warehouses remain legible.
+ * The caption always shows the true (or estimated) panel count.
+ */
+function computePanelOverlay(lead: ProposalData['lead']): {
+  cols: number
+  rows: number
+  widthPct: number
+  heightPct: number
+  displayedPanelCount: number
+  estimatedKwp: number | null
+  isEstimate: boolean
+} {
+  const MAX_CELLS = 420
+
+  // 1. Resolve panel count: real > estimate from roof area > fallback.
+  let panelCount = lead.solarMaxPanelCount || 0
+  let isEstimate = false
+  if (!panelCount && lead.roofAreaSqm && lead.roofAreaSqm > 0) {
+    panelCount = Math.floor((lead.roofAreaSqm * 0.55) / 2)
+    isEstimate = true
+  }
+  if (!panelCount || panelCount < 6) {
+    panelCount = 40
+    isEstimate = true
+  }
+
+  // 2. For display only, cap at MAX_CELLS (keeps the grid readable at A4 size).
+  const displayCells = Math.min(panelCount, MAX_CELLS)
+
+  // 3. Landscape-biased grid (~2:1) — matches how commercial arrays are laid out.
+  const rows = Math.max(2, Math.round(Math.sqrt(displayCells / 2)))
+  const cols = Math.max(4, Math.ceil(displayCells / rows))
+
+  // 4. Overlay size as % of the satellite image. The Mapbox image covers a fixed
+  //    ground area (zoom 19 ≈ 0.2 m/pixel → ~180×120 m visible). We take the
+  //    fourth-root of the real array/roof area so tiny vs. huge buildings still
+  //    produce visually distinguishable overlays without blowing out the frame.
+  const areaSqm = lead.solarMaxArrayAreaSqm || lead.roofAreaSqm || 600
+  const scale = Math.pow(Math.max(40, areaSqm), 0.3)
+  const widthPct = Math.max(30, Math.min(86, scale * 8.5))
+  const heightPct = Math.max(20, Math.min(70, widthPct * 0.72))
+
+  // 5. Estimated kWp (real count × real panel capacity, or 400 W default).
+  const watts = lead.solarPanelCapacityWatts || 400
+  const estimatedKwp = panelCount > 0 ? (panelCount * watts) / 1000 : null
+
+  return {
+    cols,
+    rows,
+    widthPct,
+    heightPct,
+    displayedPanelCount: panelCount,
+    estimatedKwp,
+    isEstimate,
+  }
 }
 
 export function renderProposalHtml(data: ProposalData): string {
@@ -103,6 +164,9 @@ export function renderProposalHtml(data: ProposalData): string {
   // as AFTER backdrop if provided; otherwise reuse the same image so the pin remains.
   const beforeImg = satelliteImageUrl
   const afterImg = satelliteImageUrlClean || satelliteImageUrl
+
+  // Panel overlay sized to the actual rooftop (Solar API if available, else estimate).
+  const overlay = computePanelOverlay(lead)
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -165,10 +229,9 @@ export function renderProposalHtml(data: ProposalData): string {
   .ba-caption { padding: 7px 10px 9px; background: white; font-size: 10px; color: #374151; }
   .ba-caption strong { color: #0f172a; }
 
-  /* The solar panel array overlay */
+  /* The solar panel array overlay — width/height set inline per-lead */
   .panel-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
   .panel-array {
-    width: 68%; height: 62%;
     display: grid;
     gap: 1px;
     transform: rotate(-6deg) perspective(400px) rotateX(10deg);
@@ -218,10 +281,10 @@ export function renderProposalHtml(data: ProposalData): string {
       <div class="ba-card">
         <div class="ba-imgbox">
           ${afterImg ? `<img class="ba-img" src="${escape(afterImg)}" alt="Rooftop with solar panels" />` : '<div class="ba-img-empty">Satellite image unavailable</div>'}
-          <div class="panel-wrap">${panelGridHtml(14, 8)}</div>
+          <div class="panel-wrap">${panelGridHtml(overlay.cols, overlay.rows, overlay.widthPct, overlay.heightPct)}</div>
           <span class="ba-label after">After</span>
         </div>
-        <div class="ba-caption"><strong>With ${lead.solarMaxPanelCount ? num(lead.solarMaxPanelCount) + ' solar panels' : 'solar panels'}</strong>${panelKw ? ' — ' + panelKw.toFixed(1) + ' kWp system' : ''}</div>
+        <div class="ba-caption"><strong>With ${overlay.isEstimate ? '~' : ''}${num(overlay.displayedPanelCount)} solar panels</strong>${overlay.estimatedKwp ? ' — ' + overlay.estimatedKwp.toFixed(1) + ' kWp system' + (overlay.isEstimate ? ' (estimated)' : '') : ''}</div>
       </div>
     </div>
   </div>
