@@ -41,7 +41,10 @@ export interface ProposalData {
   senderCompany: string
   senderEmail: string | null
   senderPhone: string | null
+  /** Clean satellite image of the rooftop (BEFORE). No pin. */
   satelliteImageUrl: string | null
+  /** Optional second satellite image — usually the same URL as satelliteImageUrl, used as the backdrop for the AFTER view. */
+  satelliteImageUrlClean?: string | null
   generatedAt: string
 }
 
@@ -68,8 +71,20 @@ function eur(n: number | null | undefined): string {
   return '€' + Math.round(n).toLocaleString()
 }
 
+/**
+ * Build a grid of panel <div>s. The wrapper applies rotation + perspective.
+ * We intentionally keep the grid dense (14 cols x 8 rows = 112 panels) so it
+ * always reads as a real panel field, regardless of the actual rooftop size.
+ * The label below the image carries the true panel count from the Solar API.
+ */
+function panelGridHtml(cols: number, rows: number): string {
+  const cells: string[] = []
+  for (let i = 0; i < cols * rows; i++) cells.push('<div class="panel"></div>')
+  return `<div class="panel-array" style="grid-template-columns: repeat(${cols}, 1fr); grid-template-rows: repeat(${rows}, 1fr);">${cells.join('')}</div>`
+}
+
 export function renderProposalHtml(data: ProposalData): string {
-  const { lead, businessCase, senderName, senderCompany, senderEmail, senderPhone, satelliteImageUrl, generatedAt } = data
+  const { lead, businessCase, senderName, senderCompany, senderEmail, senderPhone, satelliteImageUrl, satelliteImageUrlClean, generatedAt } = data
   const displayName = lead.businessName || 'Commercial rooftop'
   const addr = lead.address || `${lead.latitude.toFixed(5)}, ${lead.longitude.toFixed(5)}`
   const city = [lead.city, lead.country].filter(Boolean).join(', ')
@@ -84,6 +99,11 @@ export function renderProposalHtml(data: ProposalData): string {
       ? (lead.solarYearlyEnergyKwh * lead.solarPanelLifetimeYears) / 1000
       : null
 
+  // Use the labelled (with-pin) image as BEFORE backdrop, and a clean one (no pin)
+  // as AFTER backdrop if provided; otherwise reuse the same image so the pin remains.
+  const beforeImg = satelliteImageUrl
+  const afterImg = satelliteImageUrlClean || satelliteImageUrl
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -93,47 +113,75 @@ export function renderProposalHtml(data: ProposalData): string {
   @page { margin: 0; size: A4; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #1a1a1a; line-height: 1.4; }
-  .page { width: 210mm; min-height: 297mm; padding: 18mm 16mm; position: relative; page-break-after: always; }
+  .page { width: 210mm; min-height: 297mm; padding: 16mm 16mm; position: relative; page-break-after: always; }
   .page:last-child { page-break-after: auto; }
   h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
   h1 { font-size: 28px; color: #0a0a0a; }
-  h2 { font-size: 18px; color: #0a0a0a; margin-bottom: 10px; }
-  h3 { font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  h2 { font-size: 16px; color: #0a0a0a; margin-bottom: 8px; }
+  h3 { font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
   p  { margin: 0 0 10px 0; font-size: 11px; color: #374151; }
   .muted { color: #6b7280; }
-  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
   .brand-dot { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #f59e0b, #f97316); display: inline-flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 15px; }
   .brand-name { font-weight: 800; font-size: 16px; letter-spacing: -0.01em; }
   .brand-tag { font-size: 10px; color: #6b7280; margin-top: 1px; }
-  .hero { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #fde68a; border-radius: 14px; padding: 20px; margin-bottom: 18px; }
+  .hero { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #fde68a; border-radius: 14px; padding: 16px 18px; margin-bottom: 14px; }
   .hero .eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #b45309; }
-  .hero .title { font-size: 26px; font-weight: 800; color: #111827; margin-top: 4px; }
-  .hero .addr { color: #6b7280; font-size: 12px; margin-top: 6px; }
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-  .kpi { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }
+  .hero .title { font-size: 22px; font-weight: 800; color: #111827; margin-top: 2px; }
+  .hero .addr { color: #6b7280; font-size: 11px; margin-top: 4px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .kpi { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 11px; }
   .kpi .label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; }
-  .kpi .value { font-size: 20px; font-weight: 800; color: #111827; margin-top: 4px; }
-  .kpi .sub { font-size: 10px; color: #6b7280; margin-top: 2px; }
+  .kpi .value { font-size: 18px; font-weight: 800; color: #111827; margin-top: 3px; }
+  .kpi .sub { font-size: 9px; color: #6b7280; margin-top: 2px; }
   .kpi.accent .value { color: #d97706; }
-  .section { margin-top: 18px; }
-  .row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #f3f4f6; font-size: 11px; }
+  .section { margin-top: 14px; }
+  .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f3f4f6; font-size: 11px; }
   .row:last-child { border-bottom: none; }
   .row .k { color: #6b7280; }
   .row .v { color: #111827; font-weight: 600; }
-  .map-img { width: 100%; height: 180px; object-fit: cover; border-radius: 10px; border: 1px solid #e5e7eb; }
   .badge { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
   .badge-amber { background: #fef3c7; color: #b45309; }
   .badge-emerald { background: #d1fae5; color: #065f46; }
   .badge-blue { background: #dbeafe; color: #1e40af; }
-  .cta { background: #111827; color: white; border-radius: 12px; padding: 18px 20px; margin-top: 20px; }
+  .cta { background: #111827; color: white; border-radius: 12px; padding: 16px 18px; margin-top: 14px; }
   .cta h2 { color: white; margin-bottom: 6px; }
   .cta p { color: #d1d5db; }
   .cta .sender { margin-top: 12px; padding-top: 12px; border-top: 1px solid #374151; display: flex; gap: 16px; font-size: 10px; color: #d1d5db; }
   .cta .sender strong { color: white; }
-  .footer { position: absolute; bottom: 12mm; left: 16mm; right: 16mm; border-top: 1px solid #e5e7eb; padding-top: 8px; display: flex; justify-content: space-between; font-size: 9px; color: #9ca3af; }
-  .narrative { background: #f9fafb; border-left: 3px solid #f59e0b; padding: 12px 14px; border-radius: 0 10px 10px 0; font-size: 11px; color: #374151; line-height: 1.55; }
-  .disclaimer { margin-top: 14px; font-size: 9px; color: #9ca3af; line-height: 1.5; }
+  .footer { position: absolute; bottom: 10mm; left: 16mm; right: 16mm; border-top: 1px solid #e5e7eb; padding-top: 6px; display: flex; justify-content: space-between; font-size: 9px; color: #9ca3af; }
+  .narrative { background: #f9fafb; border-left: 3px solid #f59e0b; padding: 10px 12px; border-radius: 0 10px 10px 0; font-size: 10.5px; color: #374151; line-height: 1.55; }
+  .disclaimer { margin-top: 12px; font-size: 9px; color: #9ca3af; line-height: 1.5; }
+
+  /* Before / After visualization */
+  .ba-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .ba-card { border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; background: #000; }
+  .ba-imgbox { position: relative; width: 100%; height: 155px; overflow: hidden; }
+  .ba-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ba-img-empty { width: 100%; height: 100%; background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%); display: flex; align-items: center; justify-content: center; color: #718096; font-size: 11px; }
+  .ba-label { position: absolute; top: 8px; left: 8px; padding: 3px 9px; border-radius: 999px; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: white; background: rgba(17,24,39,0.85); backdrop-filter: blur(4px); }
+  .ba-label.after { background: rgba(5,150,105,0.92); }
+  .ba-caption { padding: 7px 10px 9px; background: white; font-size: 10px; color: #374151; }
+  .ba-caption strong { color: #0f172a; }
+
+  /* The solar panel array overlay */
+  .panel-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .panel-array {
+    width: 68%; height: 62%;
+    display: grid;
+    gap: 1px;
+    transform: rotate(-6deg) perspective(400px) rotateX(10deg);
+    transform-origin: center center;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+  }
+  .panel {
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 40%),
+      linear-gradient(180deg, #1a3a6b 0%, #0c1e3e 100%);
+    border: 0.5px solid #3a5a8e;
+    border-radius: 1px;
+  }
 </style>
 </head>
 <body>
@@ -150,18 +198,37 @@ export function renderProposalHtml(data: ProposalData): string {
     <div class="eyebrow">Rooftop solar proposal</div>
     <div class="title">${escape(displayName)}</div>
     <div class="addr">${escape(addr)}${city ? ' — ' + escape(city) : ''}</div>
-    <div style="margin-top:10px">
+    <div style="margin-top:8px">
       ${lead.businessType ? `<span class="badge badge-amber">${escape(lead.businessType)}</span>` : ''}
       ${hasRealSolar ? '<span class="badge badge-amber" style="margin-left:6px">Google Solar API verified</span>' : '<span class="badge badge-emerald" style="margin-left:6px">Preliminary estimate</span>'}
       ${lead.dataSource === 'GOOGLE_PLACES' || lead.dataSource === 'HYBRID' ? '<span class="badge badge-blue" style="margin-left:6px">Google Places data</span>' : ''}
     </div>
   </div>
 
-  ${satelliteImageUrl ? `<img class="map-img" src="${escape(satelliteImageUrl)}" alt="Satellite view of the building" />` : ''}
+  <div class="section">
+    <h3>Rooftop visualization — before &amp; after</h3>
+    <div class="ba-wrap" style="margin-top:8px">
+      <div class="ba-card">
+        <div class="ba-imgbox">
+          ${beforeImg ? `<img class="ba-img" src="${escape(beforeImg)}" alt="Current rooftop satellite view" />` : '<div class="ba-img-empty">Satellite image unavailable</div>'}
+          <span class="ba-label">Before</span>
+        </div>
+        <div class="ba-caption"><strong>Current rooftop</strong> — ${num(lead.roofAreaSqm)} m² of usable surface</div>
+      </div>
+      <div class="ba-card">
+        <div class="ba-imgbox">
+          ${afterImg ? `<img class="ba-img" src="${escape(afterImg)}" alt="Rooftop with solar panels" />` : '<div class="ba-img-empty">Satellite image unavailable</div>'}
+          <div class="panel-wrap">${panelGridHtml(14, 8)}</div>
+          <span class="ba-label after">After</span>
+        </div>
+        <div class="ba-caption"><strong>With ${lead.solarMaxPanelCount ? num(lead.solarMaxPanelCount) + ' solar panels' : 'solar panels'}</strong>${panelKw ? ' — ' + panelKw.toFixed(1) + ' kWp system' : ''}</div>
+      </div>
+    </div>
+  </div>
 
   <div class="section">
     <h3>Business case</h3>
-    <div class="grid-4" style="margin-top:8px">
+    <div class="grid-4" style="margin-top:6px">
       <div class="kpi">
         <div class="label">System size</div>
         <div class="value">${businessCase ? businessCase.systemKwp.toFixed(1) + ' kWp' : '–'}</div>
@@ -208,7 +275,7 @@ export function renderProposalHtml(data: ProposalData): string {
 
   <div class="grid-2">
     <div>
-      <h2>Rooftop & property</h2>
+      <h2>Rooftop &amp; property</h2>
       <div class="row"><span class="k">Business</span><span class="v">${escape(displayName)}</span></div>
       <div class="row"><span class="k">Type</span><span class="v">${escape(lead.businessType || '–')}</span></div>
       <div class="row"><span class="k">Building</span><span class="v">${escape(lead.buildingType || '–')}</span></div>
@@ -266,7 +333,7 @@ export function renderProposalHtml(data: ProposalData): string {
     </div>
   </div>
 
-  <p class="disclaimer">Figures in this proposal are based on ${hasRealSolar ? 'Google Solar API rooftop data and' : 'preliminary roof-area estimates and'} assumed commercial electricity tariffs. Actual system size, production and savings depend on site-specific factors including roof structure, shading, orientation, grid-connection limits, and current electricity contract. A detailed engineering survey is required before any binding proposal.</p>
+  <p class="disclaimer">Figures in this proposal are based on ${hasRealSolar ? 'Google Solar API rooftop data and' : 'preliminary roof-area estimates and'} assumed commercial electricity tariffs. Actual system size, production and savings depend on site-specific factors including roof structure, shading, orientation, grid-connection limits, and current electricity contract. A detailed engineering survey is required before any binding proposal. Before/after visualization is illustrative and does not reflect the final panel layout.</p>
 
   <div class="footer">
     <span>${escape(senderCompany)}</span>

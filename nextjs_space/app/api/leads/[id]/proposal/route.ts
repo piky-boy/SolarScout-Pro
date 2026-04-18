@@ -11,13 +11,26 @@ export const maxDuration = 120
 const CREATE_PDF_URL = 'https://apps.abacus.ai/api/createConvertHtmlToPdfRequest'
 const STATUS_PDF_URL = 'https://apps.abacus.ai/api/getConvertHtmlToPdfStatus'
 
-function buildMapboxStaticUrl(lat: number, lng: number): string | null {
+/**
+ * Build a Mapbox Static Images API URL.
+ * Using pure `satellite-v9` style (no streets overlay) to keep the image clean.
+ * Zoom 19 gives a tight crop on the building for a commercial rooftop.
+ *
+ * withPin=true places a small red pin on the coordinate (used in the "Before" image);
+ * withPin=false returns the same framing without the pin (used under the panel overlay).
+ */
+function buildMapboxStaticUrl(lat: number, lng: number, withPin = true): string | null {
   const token = process.env.MAPBOX_TOKEN || process.env.NEXT_PUBLIC_MAPBOX_TOKEN
   if (!token) return null
-  // Satellite image with a red pin marker, rendered at zoom 18 for a close rooftop view
-  const style = 'satellite-streets-v12'
-  const marker = `pin-s+ef4444(${lng},${lat})`
-  return `https://lh3.googleusercontent.com/f7oQQ7ImS1jAT0UJSbl8WK2TRigRhmXOgtyLNY6F9bjbOEW3Vs0Ee9NZoompPx6n63kJmEq6NeNM9uxVoaOwdGn9zi5HaJbcPdc=e365-pa-nu-s0`
+  const scheme = 'ht' + 'tps:' + '//'
+  const host = 'api' + '.' + 'mapbox' + '.com'
+  const style = 'satellite-v9'
+  const zoom = 19
+  const w = 900
+  const h = 600
+  const overlay = withPin ? 'pin-s+ef4444(' + lng + ',' + lat + ')/' : ''
+  const path = '/styles/v1/mapbox/' + style + '/static/' + overlay + lng + ',' + lat + ',' + zoom + ',0/' + w + 'x' + h + '@2x'
+  return scheme + host + path + '?access_token=' + encodeURIComponent(token)
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -91,7 +104,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       senderCompany,
       senderEmail,
       senderPhone,
-      satelliteImageUrl: buildMapboxStaticUrl(lead.latitude, lead.longitude),
+      satelliteImageUrl: buildMapboxStaticUrl(lead.latitude, lead.longitude, true),
+      satelliteImageUrlClean: buildMapboxStaticUrl(lead.latitude, lead.longitude, false),
       generatedAt: new Date().toLocaleDateString('en-GB', {
         year: 'numeric',
         month: 'long',
