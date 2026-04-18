@@ -23,6 +23,7 @@ import {
 import { LeadDetailMap } from './_components/lead-detail-map'
 import { LeadNotesForm } from './_components/lead-notes-form'
 import { SolarInsights } from './_components/solar-insights'
+import { OutreachGenerator } from './_components/outreach-generator'
 
 export const dynamic = 'force-dynamic'
 
@@ -136,6 +137,16 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
 
           <div className="mt-6">
             <SolarInsights leadId={lead.id} />
+          </div>
+
+          <div className="mt-6">
+            <OutreachGenerator
+              leadId={lead.id}
+              country={lead.country}
+              contactEmail={lead.contactEmail}
+              contactPhone={lead.contactPhone}
+              businessName={lead.businessName}
+            />
           </div>
 
           <div className="mt-6">
