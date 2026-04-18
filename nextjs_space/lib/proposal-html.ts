@@ -50,11 +50,28 @@ export interface ProposalData {
   /** Optional second satellite image — usually the same URL as satelliteImageUrl, used as the backdrop for the AFTER view. */
   satelliteImageUrlClean?: string | null
   /**
-   * Optional real panel layout from Google Solar API.
+   * Optional real panel layout from Google Solar API (Mapbox/Web-Mercator path).
    * When present we render actual panel positions (pixel-accurate, rotated by
    * roof azimuth) instead of a generic centered grid.
    */
   panelLayout?: PanelLayoutInput | null
+  /**
+   * Pre-rendered SVG overlay containing the real panel positions.
+   * Used when we have imagery whose projection can't be expressed by Web-Mercator
+   * math alone (e.g. Solar API RGB GeoTIFF in UTM). The route has already
+   * generated the SVG against the exact pixel grid of `satelliteImageUrl`.
+   */
+  panelSvgOverride?: string | null
+  /**
+   * Number of panels rendered when `panelSvgOverride` is used (needed for the
+   * caption since we can't count rectangles from the opaque SVG string).
+   */
+  panelCountOverride?: number | null
+  /**
+   * Aspect ratio (width / height) of the BEFORE / AFTER images. When set we
+   * compute the container height so the image fits perfectly without cropping.
+   */
+  imageAspectRatio?: number | null
   generatedAt: string
 }
 
@@ -155,7 +172,7 @@ function computePanelOverlay(lead: ProposalData['lead']): {
 }
 
 export function renderProposalHtml(data: ProposalData): string {
-  const { lead, businessCase, senderName, senderCompany, senderEmail, senderPhone, satelliteImageUrl, satelliteImageUrlClean, panelLayout, generatedAt } = data
+  const { lead, businessCase, senderName, senderCompany, senderEmail, senderPhone, satelliteImageUrl, satelliteImageUrlClean, panelLayout, panelSvgOverride, panelCountOverride, imageAspectRatio, generatedAt } = data
   const displayName = lead.businessName || 'Commercial rooftop'
   const addr = lead.address || `${lead.latitude.toFixed(5)}, ${lead.longitude.toFixed(5)}`
   const city = [lead.city, lead.country].filter(Boolean).join(', ')
@@ -175,19 +192,39 @@ export function renderProposalHtml(data: ProposalData): string {
   const beforeImg = satelliteImageUrl
   const afterImg = satelliteImageUrlClean || satelliteImageUrl
 
-  // Prefer a real panel layout (pixel-accurate, from Google Solar API) when available.
-  // Fall back to a generic scalable grid sized from roof area so the "After" image
-  // still looks plausible when Solar API data is missing.
-  const useRealLayout = !!panelLayout && panelLayout.panels.length > 0
-  const overlay = useRealLayout ? null : computePanelOverlay(lead)
-  const realPanelSvg = useRealLayout ? renderPanelArraySvg(panelLayout!) : ''
-  const displayedPanelCount = useRealLayout
-    ? panelLayout!.panels.length
-    : overlay!.displayedPanelCount
-  const overlayIsEstimate = useRealLayout ? false : overlay!.isEstimate
-  const overlayKwp = useRealLayout
+  // Pixel-accurate real panel layout from Google Solar API. Three modes:
+  //   1. panelSvgOverride: caller pre-rendered the SVG against real imagery (UTM GeoTIFF)
+  //   2. panelLayout: we compute the Mapbox Web-Mercator SVG here
+  //   3. fallback: generic scaled grid from roof area (when Solar API data is missing)
+  const useOverrideSvg = !!panelSvgOverride
+  const useRealLayout = !useOverrideSvg && !!panelLayout && panelLayout.panels.length > 0
+  const overlay = useOverrideSvg || useRealLayout ? null : computePanelOverlay(lead)
+  const realPanelSvg = useOverrideSvg
+    ? panelSvgOverride!
+    : useRealLayout
+      ? renderPanelArraySvg(panelLayout!)
+      : ''
+  const displayedPanelCount = useOverrideSvg
+    ? (panelCountOverride ?? lead.solarMaxPanelCount ?? 0)
+    : useRealLayout
+      ? panelLayout!.panels.length
+      : overlay!.displayedPanelCount
+  const overlayIsEstimate = useOverrideSvg ? false : useRealLayout ? false : overlay!.isEstimate
+  const overlayKwp = useOverrideSvg || useRealLayout
     ? (displayedPanelCount * (lead.solarPanelCapacityWatts || 400)) / 1000
     : overlay!.estimatedKwp
+  const hasRealPanelSvg = useOverrideSvg || useRealLayout
+
+  // Image box CSS: when we know the image's aspect ratio (Solar imagery case),
+  // lock the container to that ratio so the panel SVG overlays the image 1:1
+  // without `object-fit: cover` cropping. Otherwise keep the legacy fixed height
+  // that works with Mapbox's always-fixed 900×600 aspect.
+  const imgBoxStyle = imageAspectRatio && imageAspectRatio > 0
+    ? `width:100%;aspect-ratio:${imageAspectRatio.toFixed(4)};height:auto;`
+    : ''
+  const imgCssClass = imageAspectRatio && imageAspectRatio > 0
+    ? 'ba-img ba-img-fit'
+    : 'ba-img'
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -244,6 +281,7 @@ export function renderProposalHtml(data: ProposalData): string {
   .ba-card { border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; background: #000; }
   .ba-imgbox { position: relative; width: 100%; height: 155px; overflow: hidden; }
   .ba-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ba-img-fit { width: 100%; height: 100%; object-fit: fill; display: block; }
   .ba-img-empty { width: 100%; height: 100%; background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%); display: flex; align-items: center; justify-content: center; color: #718096; font-size: 11px; }
   .ba-label { position: absolute; top: 8px; left: 8px; padding: 3px 9px; border-radius: 999px; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: white; background: rgba(17,24,39,0.85); backdrop-filter: blur(4px); }
   .ba-label.after { background: rgba(5,150,105,0.92); }

@@ -204,21 +204,52 @@ export function extractPanelLayoutFromRawJson(
 }
 
 /**
+ * Build the SVG string that wraps a set of panel rectangles. Kept in one place
+ * so the Mapbox (Web Mercator) and Solar API (UTM) code paths both produce
+ * visually identical overlays.
+ */
+function svgWithPanels(parts: string[], viewBoxW: number, viewBoxH: number): string {
+  return `<svg class="panel-svg" viewBox="0 0 ${viewBoxW} ${viewBoxH}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="panelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#1e3a6b" stop-opacity="0.95" />
+        <stop offset="100%" stop-color="#0b1a3a" stop-opacity="0.95" />
+      </linearGradient>
+      <filter id="panelShadow" x="-5%" y="-5%" width="110%" height="110%">
+        <feDropShadow dx="0" dy="0.6" stdDeviation="0.4" flood-opacity="0.5" />
+      </filter>
+    </defs>
+    <g fill="url(#panelGrad)" stroke="#4a68a0" stroke-width="0.35" filter="url(#panelShadow)">
+      ${parts.join('')}
+    </g>
+  </svg>`
+}
+
+/**
+ * Azimuth-to-rotation mapping.
+ *
+ * Google Solar API reports each roof segment's azimuth in degrees clockwise
+ * from North — i.e. the compass direction the roof *faces* (downslope).
+ * A panel's long axis is perpendicular to the downslope, so drawing it with
+ * SVG rotate(azimuth) aligns the long side exactly along the ridge.
+ * SVG rotation is clockwise, matching compass orientation.
+ */
+function rotationForAzimuth(azimuth: number): number {
+  return azimuth
+}
+
+/**
  * Render an SVG overlay containing every panel drawn at its real pixel
  * position, sized to the real panel dimensions, and rotated to match each
- * roof segment's azimuth.
- *
- * `heightCssPct` is the ratio between the rendered image height (CSS) and
- * its native pixel height — panels are drawn in native pixel units and the
- * SVG `viewBox` scales to fit whatever CSS size the container applies.
+ * roof segment's azimuth. Uses Web Mercator math — suitable for Mapbox
+ * static satellite images.
  */
 export function renderPanelArraySvg(layout: PanelLayoutInput): string {
   const { panels, segments, panelWidthMeters, panelHeightMeters, centerLat, centerLng, zoom, imgWidth, imgHeight } = layout
 
   // Panel dimensions in pixels at this zoom/latitude.
   const mpp = metersPerPixel(centerLat, zoom)
-  // Most commercial PV panels are ~1.7×1.0m; Solar API returns 1.879×1.045 by default.
-  // For LANDSCAPE orientation, treat the panel's long axis (height in Solar API) as horizontal.
+  // For LANDSCAPE orientation, the panel's long axis is horizontal *before rotation*.
   const longSidePx = panelHeightMeters / mpp
   const shortSidePx = panelWidthMeters / mpp
 
@@ -233,42 +264,80 @@ export function renderPanelArraySvg(layout: PanelLayoutInput): string {
       imgWidth,
       imgHeight
     )
-    // Skip panels that fell outside the frame.
     if (x < -longSidePx || x > imgWidth + longSidePx || y < -longSidePx || y > imgHeight + longSidePx) {
       continue
     }
 
-    // Pick rectangle size per orientation:
-    //   LANDSCAPE → long axis horizontal (before rotation)
-    //   PORTRAIT  → long axis vertical   (before rotation)
     const landscape = panel.orientation !== 'PORTRAIT'
     const w = landscape ? longSidePx : shortSidePx
     const h = landscape ? shortSidePx : longSidePx
 
-    // Rotation: each roof segment reports azimuth (downslope compass direction).
-    // Panel rows are perpendicular to the downslope, so we rotate by (azimuth - 90).
     const segIdx = typeof panel.segmentIndex === 'number' ? panel.segmentIndex : -1
     const seg = segIdx >= 0 && segIdx < segments.length ? segments[segIdx] : undefined
     const azimuth = seg && typeof seg.azimuthDegrees === 'number' ? seg.azimuthDegrees : 0
-    const rot = azimuth - 90
+    const rot = rotationForAzimuth(azimuth)
 
     parts.push(
       `<g transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${rot.toFixed(1)})"><rect x="${(-w / 2).toFixed(2)}" y="${(-h / 2).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" /></g>`
     )
   }
 
-  return `<svg class="panel-svg" viewBox="0 0 ${imgWidth} ${imgHeight}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="panelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#1e3a6b" stop-opacity="0.95" />
-        <stop offset="100%" stop-color="#0b1a3a" stop-opacity="0.95" />
-      </linearGradient>
-      <filter id="panelShadow" x="-5%" y="-5%" width="110%" height="110%">
-        <feDropShadow dx="0" dy="0.6" stdDeviation="0.4" flood-opacity="0.5" />
-      </filter>
-    </defs>
-    <g fill="url(#panelGrad)" stroke="#4a68a0" stroke-width="0.35" filter="url(#panelShadow)">
-      ${parts.join('')}
-    </g>
-  </svg>`
+  return svgWithPanels(parts, imgWidth, imgHeight)
+}
+
+/**
+ * Projection-based panel rendering. Takes a caller-supplied `latLngToPixel`
+ * closure plus the metres-per-pixel scale of the image, and draws every
+ * panel at its true image-pixel location.
+ *
+ * Use this with any image whose pixel↔world projection is known ahead of time
+ * (e.g. Solar API's UTM GeoTIFF, where the pixel mapping is derived from the
+ * GeoTIFF's ModelTransformation instead of Web Mercator math).
+ */
+export function renderPanelArraySvgByProjection(args: {
+  panels: SolarPanel[]
+  segments: RoofSegmentStat[]
+  panelWidthMeters: number
+  panelHeightMeters: number
+  metersPerPixel: number
+  imgWidth: number
+  imgHeight: number
+  latLngToPixel: (lat: number, lng: number) => { x: number; y: number }
+}): string {
+  const {
+    panels,
+    segments,
+    panelWidthMeters,
+    panelHeightMeters,
+    metersPerPixel,
+    imgWidth,
+    imgHeight,
+    latLngToPixel,
+  } = args
+
+  const longSidePx = panelHeightMeters / metersPerPixel
+  const shortSidePx = panelWidthMeters / metersPerPixel
+
+  const parts: string[] = []
+  for (const panel of panels) {
+    const { x, y } = latLngToPixel(panel.center.latitude, panel.center.longitude)
+    if (x < -longSidePx || x > imgWidth + longSidePx || y < -longSidePx || y > imgHeight + longSidePx) {
+      continue
+    }
+
+    const landscape = panel.orientation !== 'PORTRAIT'
+    const w = landscape ? longSidePx : shortSidePx
+    const h = landscape ? shortSidePx : longSidePx
+
+    const segIdx = typeof panel.segmentIndex === 'number' ? panel.segmentIndex : -1
+    const seg = segIdx >= 0 && segIdx < segments.length ? segments[segIdx] : undefined
+    const azimuth = seg && typeof seg.azimuthDegrees === 'number' ? seg.azimuthDegrees : 0
+    const rot = rotationForAzimuth(azimuth)
+
+    parts.push(
+      `<g transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${rot.toFixed(1)})"><rect x="${(-w / 2).toFixed(2)}" y="${(-h / 2).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" /></g>`
+    )
+  }
+
+  return svgWithPanels(parts, imgWidth, imgHeight)
 }
