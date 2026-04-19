@@ -30,7 +30,7 @@ export function SiteHeader() {
       ]
     : [
         { href: '/#features', label: 'Features', icon: LayoutDashboard },
-        { href: '/#how-it-works', label: 'How it works', icon: List },
+        { href: '/how-it-works', label: 'How it works', icon: List },
       ]
 
   return (

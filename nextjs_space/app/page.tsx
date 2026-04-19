@@ -172,6 +172,13 @@ export default function HomePage() {
               </Card>
             ))}
           </div>
+          <div className="mt-10 text-center">
+            <Link href="/how-it-works">
+              <Button variant="outline" size="lg" className="gap-2">
+                See the full walkthrough <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
