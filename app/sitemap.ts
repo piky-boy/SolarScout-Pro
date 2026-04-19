@@ -1,13 +1,10 @@
 import type { MetadataRoute } from 'next'
-import { headers } from 'next/headers'
+import { SITE_URL } from '@/lib/seo'
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-static'
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const h = await headers()
-  const host = h.get('x-forwarded-host') ?? h.get('host') ?? ''
-  const protocol = h.get('x-forwarded-proto') ?? 'https'
-  const base = host ? `${protocol}://${host}` : process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+export default function sitemap(): MetadataRoute.Sitemap {
+  const base = SITE_URL
   const now = new Date()
 
   /* ------------------------------------------------------------------ */

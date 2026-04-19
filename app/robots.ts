@@ -1,13 +1,9 @@
 import type { MetadataRoute } from 'next'
-import { headers } from 'next/headers'
+import { SITE_URL } from '@/lib/seo'
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-static'
 
-export default async function robots(): Promise<MetadataRoute.Robots> {
-  const h = await headers()
-  const host = h.get('x-forwarded-host') ?? h.get('host') ?? ''
-  const protocol = h.get('x-forwarded-proto') ?? 'https'
-  const base = host ? `${protocol}://${host}` : process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
@@ -26,7 +22,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
         disallow: ['/api/', '/dashboard', '/leads', '/admin', '/waitlist'],
       },
     ],
-    sitemap: `${base}/sitemap.xml`,
-    host: base,
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
   }
 }

@@ -7,7 +7,7 @@ import type { Metadata } from 'next'
 export const SITE_NAME = 'SolarScout Pro'
 export const SITE_TAGLINE = 'Automated Solar Lead Generation for Europe'
 export const SITE_URL =
-  process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+  process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL ?? 'https://www.solarscout-pro.com'
 
 export const SITE_DESCRIPTION =
   'SolarScout Pro automatically detects commercial buildings and warehouses across Romania, Spain, Portugal, Albania and the United Kingdom — turning satellite data into ready-to-contact solar leads.'
