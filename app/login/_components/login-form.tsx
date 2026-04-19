@@ -84,10 +84,6 @@ export function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-900">
-          Admin login is now credential-based only. Please use your email and password below.
-        </div>
-
         <Button
           onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
           variant="outline"
