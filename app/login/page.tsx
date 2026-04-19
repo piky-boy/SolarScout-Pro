@@ -21,12 +21,6 @@ export default async function LoginPage() {
   const session = await getServerSession(authOptions)
   if (session?.user) redirect('/dashboard')
 
-  const googleConfigured =
-    !!process.env.GOOGLE_CLIENT_ID &&
-    process.env.GOOGLE_CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID_PLACEHOLDER' &&
-    !!process.env.GOOGLE_CLIENT_SECRET &&
-    process.env.GOOGLE_CLIENT_SECRET !== 'YOUR_GOOGLE_CLIENT_SECRET_PLACEHOLDER'
-
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-background via-background to-amber-50 dark:to-amber-950/20">
       <div className="mx-auto flex w-full max-w-[1200px] flex-1 items-center justify-center px-6 py-12">
@@ -64,7 +58,7 @@ export default async function LoginPage() {
               ))}
             </ul>
           </div>
-          <LoginForm googleConfigured={googleConfigured} />
+          <LoginForm />
         </div>
       </div>
     </div>
