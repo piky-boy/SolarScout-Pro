@@ -49,6 +49,13 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
   const userId = (session?.user as any)?.id as string | undefined
   if (!session?.user || !userId) redirect('/login')
 
+  // Gate: unapproved users go to waitlist
+  const dbUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { approved: true, role: true },
+  })
+  if (!dbUser?.approved && dbUser?.role !== 'ADMIN') redirect('/waitlist')
+
   const lead = await prisma.lead.findFirst({ where: { id: params.id, userId } })
   if (!lead) notFound()
 

@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { SunMedium, LayoutDashboard, List, LogOut, LogIn } from 'lucide-react'
+import { SunMedium, LayoutDashboard, List, LogOut, LogIn, Shield } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -91,6 +91,11 @@ export function SiteHeader() {
                 <DropdownMenuItem onClick={() => router.push('/leads')}>
                   <List className="mr-2 h-4 w-4" /> My Leads
                 </DropdownMenuItem>
+                {(session?.user as any)?.role === 'ADMIN' && (
+                  <DropdownMenuItem onClick={() => router.push('/admin/users')}>
+                    <Shield className="mr-2 h-4 w-4" /> Admin Panel
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut({ callbackUrl: '/login' })}>
                   <LogOut className="mr-2 h-4 w-4" /> Sign out

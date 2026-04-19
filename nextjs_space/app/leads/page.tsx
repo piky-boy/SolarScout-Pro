@@ -17,6 +17,13 @@ export default async function LeadsPage() {
   const userId = (session?.user as any)?.id as string | undefined
   if (!session?.user || !userId) redirect('/login')
 
+  // Gate: unapproved users go to waitlist
+  const dbUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { approved: true, role: true },
+  })
+  if (!dbUser?.approved && dbUser?.role !== 'ADMIN') redirect('/waitlist')
+
   const [leads, countryGroups, cityGroups, typeGroups] = await Promise.all([
     prisma.lead.findMany({
       where: { userId },

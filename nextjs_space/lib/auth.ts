@@ -66,15 +66,34 @@ export const authOptions: NextAuthOptions = {
     },
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = (user as any).id
+      }
+      // Refresh role/approved/surveyCompleted from DB on every token creation or update
+      if (token.id) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { role: true, approved: true, surveyCompleted: true },
+          })
+          if (dbUser) {
+            token.role = dbUser.role
+            token.approved = dbUser.approved
+            token.surveyCompleted = dbUser.surveyCompleted
+          }
+        } catch (e) {
+          // If DB lookup fails, keep existing token values
+        }
       }
       return token
     },
     async session({ session, token }) {
       if (token?.id && session?.user) {
-        ;(session.user as any).id = token.id as string
+        session.user.id = token.id as string
+        session.user.role = (token.role as string) ?? 'USER'
+        session.user.approved = token.approved ?? false
+        session.user.surveyCompleted = token.surveyCompleted ?? false
       }
       return session
     },
@@ -83,7 +102,7 @@ export const authOptions: NextAuthOptions = {
       try {
         if (new URL(url).origin === baseUrl) return url
       } catch {}
-      return baseUrl
+      return `${baseUrl}/dashboard`
     },
   },
 }

@@ -17,6 +17,13 @@ export default async function DashboardPage() {
   const userId = (session?.user as any)?.id as string | undefined
   if (!session?.user || !userId) redirect('/login')
 
+  // Gate: unapproved users go to waitlist
+  const dbUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { approved: true, surveyCompleted: true, role: true },
+  })
+  if (!dbUser?.approved && dbUser?.role !== 'ADMIN') redirect('/waitlist')
+
   // Prefetch lightweight stats for initial render
   const [totalLeads, recentSearches] = await Promise.all([
     prisma.lead.count({ where: { userId } }),
