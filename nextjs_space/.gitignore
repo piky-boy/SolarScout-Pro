@@ -1,0 +1,15 @@
+node_modules/
+.next/
+.build/
+.deploy/
+.env
+*.log
+.DS_Store
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+.pytest_cache/
+dist/
+out/
+build/
