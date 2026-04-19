@@ -13,8 +13,8 @@ import {
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-const LLM_API_URL = 'https://apps.abacus.ai/v1/chat/completions'
-const MODEL = 'gpt-5.4-mini'
+const LLM_API_URL = 'https://api.openai.com/v1/chat/completions'
+const MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini'
 
 const outreachSchema = {
   type: 'object',
@@ -69,9 +69,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!process.env.ABACUSAI_API_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
-        { error: 'LLM API is not configured on the server.' },
+        { error: 'OpenAI API is not configured on the server.' },
         { status: 503 }
       )
     }
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.ABACUSAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
         model: MODEL,
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (!llmRes.ok) {
       const errText = await llmRes.text()
-      console.error('[outreach] LLM API error', llmRes.status, errText.slice(0, 500))
+      console.error('[outreach] OpenAI API error', llmRes.status, errText.slice(0, 500))
       return NextResponse.json(
         { error: 'LLM request failed', details: errText.slice(0, 300) },
         { status: 502 }
