@@ -21,6 +21,11 @@ export function LoginForm({ googleConfigured = false }: { googleConfigured?: boo
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+  const isDevMode = process.env.NODE_ENV !== 'production'
+  const adminCredentials = {
+    email: 'admin@sorascout-pro.com',
+    password: 'L@nd@n1982',
+  }
 
   const handleCredentials = async (e: FormEvent) => {
     e.preventDefault()
@@ -172,6 +177,11 @@ export function LoginForm({ googleConfigured = false }: { googleConfigured?: boo
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Sign in
               </Button>
+              {isDevMode ? (
+                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-900">
+                  Admin credentials: <strong>{adminCredentials.email}</strong> / <strong>{adminCredentials.password}</strong>
+                </div>
+              ) : null}
             </form>
           </TabsContent>
           <TabsContent value="signup" className="mt-4">
