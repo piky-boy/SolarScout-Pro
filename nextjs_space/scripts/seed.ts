@@ -21,6 +21,23 @@ async function main() {
     },
   })
 
+  // Master Admin account
+  const masterEmail = 'amiosif@icloud.com'
+  const masterPassword = 'L@nd@n112'
+  const masterHashed = await bcrypt.hash(masterPassword, 10)
+  await prisma.user.upsert({
+    where: { email: masterEmail },
+    update: { name: 'Master Admin', password: masterHashed, role: 'ADMIN', approved: true, surveyCompleted: true },
+    create: {
+      email: masterEmail,
+      name: 'Master Admin',
+      password: masterHashed,
+      role: 'ADMIN',
+      approved: true,
+      surveyCompleted: true,
+    },
+  })
+
   // Seed a handful of realistic commercial leads across the four markets so
   // a new account has something to explore without waiting on an Overpass call.
   const sampleLeads = [
