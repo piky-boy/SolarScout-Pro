@@ -18,9 +18,10 @@ import {
   ArrowRight,
   CheckCircle2,
   SunMedium,
+  Play,
+  Download,
   Mail,
   Phone,
-  Download,
   Languages,
   Target,
 } from 'lucide-react'
@@ -440,6 +441,65 @@ export function HowItWorksClient() {
               )
             })}
           </div>
+        </div>
+      </Section>
+
+      {/* ==================== VIDEO PRESENTATIONS ==================== */}
+      <Section id="videos">
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          className="text-center"
+        >
+          <motion.div variants={fadeUp} custom={0} className="mb-4 inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-4 py-1.5 text-sm font-medium text-amber-500">
+            <Play className="h-4 w-4" /> Video Presentations
+          </motion.div>
+          <motion.h2 variants={fadeUp} custom={0.1} className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Watch How It Works
+          </motion.h2>
+          <motion.p variants={fadeUp} custom={0.2} className="mx-auto mt-4 max-w-xl text-muted-foreground">
+            Download our presentation videos to share with your team or customers via WhatsApp, email, or social media.
+          </motion.p>
+        </motion.div>
+
+        <div className="mt-12 grid gap-8 md:grid-cols-2">
+          {[
+            { lang: 'Español', flag: '🇪🇸', file: '/videos/solarscout-es.mp4', desc: 'Presentación completa en español — generación automática de leads solares comerciales.' },
+            { lang: 'Shqip', flag: '🇦🇱', file: '/videos/solarscout-sq.mp4', desc: 'Prezantimi i plotë në shqip — gjenerimi automatik i kontakteve për energjinë diellore.' },
+          ].map((v, i) => (
+            <motion.div
+              key={v.lang}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={fadeUp}
+              custom={i * 0.15}
+              className="group overflow-hidden rounded-2xl border bg-card shadow-lg"
+            >
+              <div className="relative aspect-video bg-zinc-900">
+                <video
+                  className="h-full w-full object-cover"
+                  controls
+                  preload="metadata"
+                  poster=""
+                >
+                  <source src={v.file} type="video/mp4" />
+                </video>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{v.flag}</span>
+                  <h3 className="text-lg font-semibold">{v.lang}</h3>
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">{v.desc}</p>
+                <a href={v.file} download className="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-amber-600">
+                  <Download className="h-4 w-4" />
+                  Download MP4
+                </a>
+              </div>
+            </motion.div>
+          ))}
         </div>
       </Section>
 
