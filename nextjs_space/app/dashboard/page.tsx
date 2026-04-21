@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'Dashboard',
-  description: 'Scout commercial rooftops and generate solar leads across Europe.',
+  description: 'Scout commercial rooftops, residential blocks and BIPV balcony opportunities across Europe.',
 }
 
 export default async function DashboardPage() {

@@ -34,7 +34,7 @@ export function LandingHero() {
           across Europe.
         </h1>
         <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-          SolarScout Pro automatically detects warehouses, factories and commercial rooftops in Romania, Spain, Portugal,
+          SolarScout Pro automatically detects commercial rooftops, residential blocks and urban buildings in Romania, Spain, Portugal,
           Albania and the United Kingdom — with full business data, estimated roof area and one-click CSV / Excel export.
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -78,7 +78,7 @@ export function LandingHero() {
               Live scan preview
             </div>
             <div className="mt-1 text-lg font-semibold">Madrid metropolitan area</div>
-            <div className="text-sm text-white/80">213 commercial rooftops detected • avg roof area 2,340 m²</div>
+            <div className="text-sm text-white/80">213 buildings detected • avg roof area 2,340 m² • incl. BIPV balcony analysis</div>
           </div>
         </div>
         <div className="absolute -right-4 -top-4 hidden rounded-xl bg-background p-4 shadow-xl sm:block">

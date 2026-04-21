@@ -23,7 +23,7 @@ export interface OsmBuilding {
 }
 
 // Classify an OSM element into a high-level business type based on tags.
-function classifyBusinessType(tags: Record<string, string>): string {
+export function classifyBusinessType(tags: Record<string, string>): string {
   const building = (tags.building ?? '').toLowerCase()
   const industrial = (tags.industrial ?? '').toLowerCase()
   const shop = (tags.shop ?? '').toLowerCase()
@@ -32,6 +32,12 @@ function classifyBusinessType(tags: Record<string, string>): string {
   const office = (tags.office ?? '').toLowerCase()
   const man_made = (tags.man_made ?? '').toLowerCase()
 
+  // Residential / urban
+  if (building === 'apartments' || building === 'residential') return 'Residential Block'
+  if (building === 'dormitory') return 'Residential Block'
+  if (building === 'hotel') return 'Hospitality'
+
+  // Commercial / industrial
   if (building === 'warehouse' || industrial === 'warehouse') return 'Warehouse'
   if (building === 'factory' || industrial === 'factory' || industrial === 'manufacturing') return 'Factory'
   if (building === 'industrial' || landuse === 'industrial') return 'Industrial'
@@ -78,7 +84,7 @@ function extractPolygonFromGeometry(element: any): LngLat[] {
   return []
 }
 
-// Build the Overpass QL query for commercial / industrial buildings in a bbox.
+// Build the Overpass QL query for commercial, industrial, AND residential buildings.
 function buildQuery(bbox: [number, number, number, number], limit: number): string {
   // bbox order for Overpass: south, west, north, east
   const [minLon, minLat, maxLon, maxLat] = bbox
@@ -86,9 +92,10 @@ function buildQuery(bbox: [number, number, number, number], limit: number): stri
   return `
 [out:json][timeout:45];
 (
-  way["building"~"^(warehouse|factory|industrial|commercial|retail|supermarket|office|hangar)$"](${bboxStr});
+  way["building"~"^(warehouse|factory|industrial|commercial|retail|supermarket|office|hangar|apartments|residential|dormitory|hotel)$"](${bboxStr});
   way["industrial"](${bboxStr});
   way["landuse"="industrial"]["building"](${bboxStr});
+  way["building:levels"]["building"~"^(apartments|residential|yes)$"](${bboxStr});
 );
 out tags geom ${limit};
 `.trim()
@@ -145,15 +152,23 @@ export async function findCommercialBuildings(
 
   const ways = elements.filter((el) => el?.type === 'way')
   const buildings: OsmBuilding[] = []
-  const minArea = opts.minRoofArea ?? 200 // filter tiny residential-sized footprints
+
+  // Different minimum area thresholds by building type
+  const defaultMinArea = opts.minRoofArea ?? 150
 
   for (const way of ways) {
     const tags: Record<string, string> = (way?.tags ?? {}) as Record<string, string>
     if (!tags) continue
 
-    // Filter obvious residential buildings
     const building = (tags.building ?? '').toLowerCase()
-    if (['house', 'residential', 'apartments', 'detached', 'terrace', 'dormitory', 'garage', 'garages'].includes(building)) {
+
+    // Skip tiny single-family houses, garages, sheds
+    if (['house', 'detached', 'terrace', 'garage', 'garages', 'shed', 'cabin', 'hut'].includes(building)) {
+      continue
+    }
+
+    // For "yes" tagged buildings, only include if they have building:levels (likely apartment blocks)
+    if (building === 'yes' && !tags['building:levels']) {
       continue
     }
 
@@ -162,7 +177,12 @@ export async function findCommercialBuildings(
     if (coords.length < 3) continue
 
     const area = polygonAreaSqm(coords)
-    if (!Number.isFinite(area) || area < minArea) continue
+    if (!Number.isFinite(area)) continue
+
+    // Apartment blocks / residential: allow smaller footprints (multi-storey = more BIPV area)
+    const isResidential = ['apartments', 'residential', 'dormitory'].includes(building) || tags['building:levels']
+    const minArea = isResidential ? Math.min(defaultMinArea, 100) : defaultMinArea
+    if (area < minArea) continue
 
     const centroid = centroidOf(coords)
     if (!centroid) continue

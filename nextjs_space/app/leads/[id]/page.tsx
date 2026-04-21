@@ -12,6 +12,7 @@ import {
   Building2,
   Clock,
   Globe2,
+  Layers,
   Mail,
   MapPin,
   Phone,
@@ -59,7 +60,8 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
   const lead = await prisma.lead.findFirst({ where: { id: params.id, userId } })
   if (!lead) notFound()
 
-  const displayName = lead.businessName ?? 'Unnamed commercial building'
+  const isBipv = lead.solarType === 'BIPV_BALCONY' || lead.solarType === 'HYBRID_ROOFTOP_BIPV'
+  const displayName = lead.businessName ?? (isBipv ? 'Unnamed residential block' : 'Unnamed commercial building')
   const addr = lead.address ?? `${lead.latitude.toFixed(5)}, ${lead.longitude.toFixed(5)}`
 
   return (
@@ -92,6 +94,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
               </Badge>
             ) : null}
             <Badge variant="outline">{lead.country ?? 'Europe'}</Badge>
+            <SolarTypeBadge solarType={lead.solarType} />
             <SourceBadge dataSource={lead.dataSource} />
             {typeof lead.googleRating === 'number' ? (
               <Badge variant="outline" className="gap-1 border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
@@ -123,6 +126,13 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
               <CardContent className="space-y-5 p-6">
                 <Stat icon={Ruler} label="Estimated roof area" value={`${(lead.roofAreaSqm ?? 0).toLocaleString()} m²`} accent />
                 <Stat icon={Building2} label="Building type" value={lead.buildingType ?? '–'} />
+                {isBipv && (
+                  <>
+                    <Stat icon={Layers} label="Est. floors" value={lead.estimatedFloors ? `${lead.estimatedFloors} floors` : '–'} />
+                    <Stat icon={Layers} label="Est. balconies (BIPV)" value={lead.estimatedBalconies ? `${lead.estimatedBalconies} balconies` : '–'} accent />
+                    <Stat icon={Ruler} label="BIPV glass area" value={lead.bipvAreaSqm ? `${lead.bipvAreaSqm.toLocaleString()} m²` : '–'} />
+                  </>
+                )}
                 <Stat icon={MapPin} label="Location" value={`${lead.latitude.toFixed(5)}, ${lead.longitude.toFixed(5)}`} mono />
                 <Stat icon={Phone} label="Phone" value={lead.contactPhone ?? 'Not available'} />
                 <Stat icon={Mail} label="Email" value={lead.contactEmail ?? 'Not available'} />
@@ -207,6 +217,31 @@ function Stat({
       </div>
     </div>
   )
+}
+
+function SolarTypeBadge({ solarType }: { solarType: string | null | undefined }) {
+  if (!solarType || solarType === 'ROOFTOP') {
+    return (
+      <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+        ☀️ Rooftop Solar
+      </Badge>
+    )
+  }
+  if (solarType === 'BIPV_BALCONY') {
+    return (
+      <Badge variant="outline" className="border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-300">
+        🏢 BIPV Balcony
+      </Badge>
+    )
+  }
+  if (solarType === 'HYBRID_ROOFTOP_BIPV') {
+    return (
+      <Badge variant="outline" className="border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-500/30 dark:bg-purple-500/10 dark:text-purple-300">
+        ☀️🏢 Rooftop + BIPV
+      </Badge>
+    )
+  }
+  return null
 }
 
 function SourceBadge({ dataSource }: { dataSource: string | null | undefined }) {

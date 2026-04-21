@@ -19,11 +19,15 @@ export const metadata: Metadata = {
     template: '%s | SolarScout Pro',
   },
   description:
-    'SolarScout Pro automatically detects commercial buildings and warehouses across Romania, Spain, Portugal, Albania and the United Kingdom — turning satellite data into ready-to-contact solar leads.',
+    'SolarScout Pro automatically detects commercial rooftops, residential blocks and urban buildings across Romania, Spain, Portugal, Albania and the United Kingdom — including BIPV glass balcony potential for blocks of flats.',
   keywords: [
     'solar leads',
     'solar lead generation',
     'commercial solar',
+    'residential solar',
+    'BIPV balcony',
+    'BIPV glass balcony',
+    'block of flats solar',
     'warehouses solar',
     'Romania solar',
     'Spain solar',
@@ -48,7 +52,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'SolarScout Pro',
     description:
-      'Automated solar lead generation for commercial buildings across Romania, Spain, Portugal, Albania and the United Kingdom.',
+      'Automated solar lead generation for commercial rooftops, residential blocks and BIPV balconies across Romania, Spain, Portugal, Albania and the United Kingdom.',
     images: ['/og-image.png'],
   },
 }

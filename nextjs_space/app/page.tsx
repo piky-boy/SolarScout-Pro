@@ -18,7 +18,7 @@ import { LandingHero } from './_components/landing-hero'
 export const metadata = {
   title: 'Automated Solar Lead Generation for Europe',
   description:
-    'Find warehouses, factories and commercial rooftops across Romania, Spain, Portugal, Albania and the United Kingdom in minutes. Export qualified solar leads to CSV or Excel.',
+    'Find commercial rooftops, residential blocks and urban buildings across Romania, Spain, Portugal, Albania and the United Kingdom in minutes — including BIPV glass balcony potential. Export qualified solar leads to CSV or Excel.',
 }
 
 const features = [
@@ -26,13 +26,13 @@ const features = [
     icon: Satellite,
     title: 'Satellite-powered detection',
     description:
-      'Scan any city or region and instantly surface commercial buildings, warehouses and factories using live OpenStreetMap + Mapbox satellite data.',
+      'Scan any city or region and instantly surface commercial rooftops, residential blocks and urban buildings using live OpenStreetMap + Mapbox satellite data — with BIPV balcony analysis for blocks of flats.',
   },
   {
     icon: Building2,
-    title: 'Commercial-only filtering',
+    title: 'Smart building classification',
     description:
-      'Residential rooftops are automatically filtered out. Focus on the biggest, most profitable solar rooftops first.',
+      'Automatically classifies commercial rooftops, residential blocks and blocks of flats — including BIPV glass balcony potential for urban buildings.',
   },
   {
     icon: MapPin,
@@ -70,7 +70,7 @@ const steps = [
     number: '02',
     title: 'Auto-detect commercial roofs',
     description:
-      'SolarScout scans the area, filters residential buildings and surfaces warehouses, factories and retail parks.',
+      'SolarScout scans the area and surfaces warehouses, factories, retail parks, residential blocks and blocks of flats with BIPV potential.',
   },
   {
     number: '03',
@@ -191,7 +191,7 @@ export default function HomePage() {
                 Ready to scout your next 100 solar leads?
               </h2>
               <p className="mt-4 text-white/90">
-                Sign in and generate your first list of commercial rooftops in minutes.
+                Sign in and generate your first list of solar leads — commercial rooftops and BIPV balconies — in minutes.
               </p>
               <ul className="mx-auto mt-6 grid max-w-md gap-2 text-left text-sm text-white/95 sm:grid-cols-2">
                 <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 flex-shrink-0" /> No setup required</li>

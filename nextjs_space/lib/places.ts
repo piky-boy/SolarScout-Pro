@@ -35,10 +35,10 @@ export interface PlaceLead {
   rawTypes: string[]
 }
 
-// Place types the Places API (New) accepts for commercial building discovery.
+// Place types the Places API (New) accepts for building discovery.
 // Reference: https://developers.google.com/maps/documentation/places/web-service/place-types
-// Limited to 50 types per request; we curate the strongest commercial/
-// industrial signals — the ones with sizable rooftops.
+// Limited to 50 types per request; we curate the strongest commercial,
+// industrial, and residential signals — buildings with solar/BIPV potential.
 export const COMMERCIAL_PLACE_TYPES = [
   // Retail & shopping
   'supermarket',
@@ -79,6 +79,10 @@ export const COMMERCIAL_PLACE_TYPES = [
   // Recreation
   'stadium',
   'movie_theater',
+  // Residential & urban (for BIPV balcony scanning)
+  'apartment_complex',
+  'apartment_building',
+  'condominium_complex',
 ]
 
 const PLACES_SEARCH_URL = 'https://places.googleapis.com/v1/places:searchNearby'
@@ -108,6 +112,8 @@ export function isPlacesApiConfigured(): boolean {
 
 function classifyPlaceType(primary: string | null, types: string[]): string {
   const all = new Set([primary, ...types].filter(Boolean) as string[])
+  // Residential / urban
+  if (all.has('apartment_complex') || all.has('apartment_building') || all.has('condominium_complex')) return 'Residential Block'
   if (all.has('supermarket') || all.has('shopping_mall') || all.has('department_store')) return 'Supermarket'
   if (all.has('warehouse_store') || all.has('storage')) return 'Warehouse'
   if (all.has('car_dealer') || all.has('car_repair') || all.has('car_wash')) return 'Automotive'

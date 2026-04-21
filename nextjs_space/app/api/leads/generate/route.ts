@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { mapboxGeocode, bboxFromCenter, clampBbox } from '@/lib/mapbox'
 import { findCommercialBuildings, type OsmBuilding } from '@/lib/overpass'
 import { searchNearbyPlacesFanout, isPlacesApiConfigured, haversineMeters, type PlaceLead } from '@/lib/places'
+import { classifySolarType, estimateFloors, estimateBalconies, bipvTotalAreaSqm } from '@/lib/bipv'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -41,10 +42,29 @@ interface MergedLead {
   openingHours: any | null
   googleRating: number | null
   googleRatingCount: number | null
+  // BIPV / residential
+  solarType: string
+  estimatedFloors: number | null
+  estimatedBalconies: number | null
+  bipvAreaSqm: number | null
+  rawTags: Record<string, string> | null
 }
 
 function mergeOsmWithPlace(osm: OsmBuilding, place: PlaceLead | null): MergedLead {
   const hybrid = place !== null
+  const bizType = place?.businessType ?? osm.businessType
+  const solarType = classifySolarType(osm.buildingType, bizType, osm.roofAreaSqm)
+
+  // Compute BIPV data for residential buildings
+  let floors: number | null = null
+  let balconies: number | null = null
+  let bipvArea: number | null = null
+  if (solarType !== 'ROOFTOP' && osm.rawTags && osm.roofAreaSqm) {
+    floors = estimateFloors(osm.rawTags, osm.roofAreaSqm)
+    balconies = estimateBalconies(floors, osm.rawTags, osm.roofAreaSqm)
+    bipvArea = Math.round(bipvTotalAreaSqm(balconies))
+  }
+
   return {
     osmId: osm.osmId,
     googlePlaceId: place?.googlePlaceId ?? null,
@@ -52,7 +72,7 @@ function mergeOsmWithPlace(osm: OsmBuilding, place: PlaceLead | null): MergedLea
     latitude: osm.latitude,
     longitude: osm.longitude,
     businessName: place?.businessName ?? osm.businessName,
-    businessType: place?.businessType ?? osm.businessType,
+    businessType: bizType,
     buildingType: osm.buildingType,
     address: place?.address ?? osm.address,
     city: place?.city ?? osm.city,
@@ -63,10 +83,16 @@ function mergeOsmWithPlace(osm: OsmBuilding, place: PlaceLead | null): MergedLea
     openingHours: place?.openingHours ?? null,
     googleRating: place?.rating ?? null,
     googleRatingCount: place?.ratingCount ?? null,
+    solarType,
+    estimatedFloors: floors,
+    estimatedBalconies: balconies,
+    bipvAreaSqm: bipvArea,
+    rawTags: osm.rawTags,
   }
 }
 
 function placeOnlyLead(place: PlaceLead): MergedLead {
+  const solarType = classifySolarType(null, place.businessType, null)
   return {
     osmId: null,
     googlePlaceId: place.googlePlaceId,
@@ -85,6 +111,11 @@ function placeOnlyLead(place: PlaceLead): MergedLead {
     openingHours: place.openingHours,
     googleRating: place.rating,
     googleRatingCount: place.ratingCount,
+    solarType,
+    estimatedFloors: null,
+    estimatedBalconies: null,
+    bipvAreaSqm: null,
+    rawTags: null,
   }
 }
 
@@ -132,7 +163,7 @@ export async function POST(request: Request) {
         bbox,
         city: geo.city ?? undefined,
         limit,
-        minRoofArea: 200,
+        minRoofArea: 100, // Lower threshold to catch apartment blocks
       }),
       placesEnabled
         ? searchNearbyPlacesFanout({
@@ -211,6 +242,10 @@ export async function POST(request: Request) {
           openingHours: m.openingHours,
           googleRating: m.googleRating,
           googleRatingCount: m.googleRatingCount,
+          solarType: m.solarType,
+          estimatedFloors: m.estimatedFloors,
+          estimatedBalconies: m.estimatedBalconies,
+          bipvAreaSqm: m.bipvAreaSqm,
         }
 
         let lead: any
@@ -235,6 +270,10 @@ export async function POST(request: Request) {
               openingHours: baseData.openingHours,
               googleRating: baseData.googleRating,
               googleRatingCount: baseData.googleRatingCount,
+              solarType: baseData.solarType,
+              estimatedFloors: baseData.estimatedFloors,
+              estimatedBalconies: baseData.estimatedBalconies,
+              bipvAreaSqm: baseData.bipvAreaSqm,
             },
             create: {
               userId,
@@ -266,6 +305,10 @@ export async function POST(request: Request) {
                 openingHours: baseData.openingHours,
                 googleRating: baseData.googleRating,
                 googleRatingCount: baseData.googleRatingCount,
+                solarType: baseData.solarType,
+                estimatedFloors: baseData.estimatedFloors,
+                estimatedBalconies: baseData.estimatedBalconies,
+                bipvAreaSqm: baseData.bipvAreaSqm,
               },
             })
           } else {
@@ -297,6 +340,9 @@ export async function POST(request: Request) {
       console.error('[generate] search history failed:', e)
     }
 
+    const residentialCount = merged.filter((m) => m.solarType !== 'ROOFTOP').length
+    const bipvCount = merged.filter((m) => m.solarType === 'BIPV_BALCONY' || m.solarType === 'HYBRID_ROOFTOP_BIPV').length
+
     return NextResponse.json({
       location: {
         placeName: geo.placeName,
@@ -312,6 +358,8 @@ export async function POST(request: Request) {
       placesCount: places.length,
       hybridCount: merged.filter((m) => m.dataSource === 'HYBRID').length,
       placesOnlyCount: merged.filter((m) => m.dataSource === 'GOOGLE_PLACES').length,
+      residentialCount,
+      bipvCount,
       placesEnabled,
       leads: savedLeads,
     })

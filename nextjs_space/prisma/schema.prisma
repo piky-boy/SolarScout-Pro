@@ -96,6 +96,10 @@ model Lead {
   osmId         String?
   googlePlaceId String?
   dataSource    String   @default("OSM")   // "OSM" | "GOOGLE_PLACES" | "HYBRID"
+  solarType     String   @default("ROOFTOP") // "ROOFTOP" | "BIPV_BALCONY" | "HYBRID_ROOFTOP_BIPV"
+  estimatedFloors  Int?
+  estimatedBalconies Int?
+  bipvAreaSqm   Float?
   openingHours  Json?
   googleRating  Float?
   googleRatingCount Int?

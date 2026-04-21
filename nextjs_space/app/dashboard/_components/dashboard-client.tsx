@@ -150,7 +150,7 @@ export function DashboardClient({ userName, initialTotalLeads, initialRecentSear
         ...r.slice(0, 4),
       ])
       if (found.length === 0) {
-        toast.info('No commercial buildings detected in that area. Try a larger city.')
+        toast.info('No buildings detected in that area. Try a larger city or different region.')
       } else {
         const sourceBits: string[] = []
         if (typeof data?.hybridCount === 'number' && data.hybridCount > 0) {
@@ -159,8 +159,11 @@ export function DashboardClient({ userName, initialTotalLeads, initialRecentSear
         if (typeof data?.placesOnlyCount === 'number' && data.placesOnlyCount > 0) {
           sourceBits.push(`${data.placesOnlyCount} Google-only`)
         }
+        if (typeof data?.bipvCount === 'number' && data.bipvCount > 0) {
+          sourceBits.push(`${data.bipvCount} BIPV balcony`)
+        }
         const suffix = sourceBits.length > 0 ? ` — ${sourceBits.join(', ')}` : ''
-        toast.success(`Found ${found.length} commercial rooftops in ${loc?.placeName ?? q}${suffix}`)
+        toast.success(`Found ${found.length} buildings in ${loc?.placeName ?? q}${suffix}`)
       }
     } catch (err: any) {
       console.error(err)
@@ -223,7 +226,7 @@ export function DashboardClient({ userName, initialTotalLeads, initialRecentSear
             </h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
               Pick a city in Romania, Spain, Portugal, Albania or the United Kingdom and SolarScout will auto-detect
-              commercial buildings and warehouses on its satellite-powered map.
+              commercial rooftops, residential blocks and urban buildings — including BIPV glass balcony potential for blocks of flats.
             </p>
           </div>
           <div className="flex items-center gap-2">

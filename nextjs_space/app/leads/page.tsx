@@ -54,6 +54,9 @@ export default async function LeadsPage() {
         dataSource: true,
         googleRating: true,
         googleRatingCount: true,
+        solarType: true,
+        estimatedBalconies: true,
+        bipvAreaSqm: true,
       },
     }),
     prisma.lead.groupBy({

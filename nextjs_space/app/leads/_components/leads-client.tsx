@@ -61,6 +61,9 @@ interface LeadItem {
   dataSource: string | null
   googleRating: number | null
   googleRatingCount: number | null
+  solarType: string | null
+  estimatedBalconies: number | null
+  bipvAreaSqm: number | null
 }
 
 interface FilterOption {

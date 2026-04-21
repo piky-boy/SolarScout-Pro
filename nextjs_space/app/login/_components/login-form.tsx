@@ -85,7 +85,7 @@ export function LoginForm({ googleConfigured = false }: { googleConfigured?: boo
         <CardDescription>
           {mode === 'signin'
             ? 'Sign in to generate and manage your solar leads.'
-            : 'Start scouting commercial rooftops in seconds.'}
+            : 'Start scouting commercial rooftops and BIPV balconies in seconds.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">

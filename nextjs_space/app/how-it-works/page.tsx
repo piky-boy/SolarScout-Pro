@@ -6,11 +6,11 @@ import { SiteFooter } from '@/components/site/site-footer'
 export const metadata: Metadata = {
   title: 'How It Works — SolarScout Pro',
   description:
-    'See how SolarScout Pro automatically detects commercial rooftops, qualifies solar leads with real satellite data, and generates branded proposals in minutes.',
+    'See how SolarScout Pro automatically detects commercial rooftops, residential blocks and BIPV balcony opportunities, qualifies solar leads with real satellite data, and generates branded proposals in minutes.',
   openGraph: {
     title: 'How SolarScout Pro Works',
     description:
-      'Auto-detect commercial rooftops → Qualify with Google Solar API → Generate branded proposals. All in one platform.',
+      'Auto-detect commercial rooftops & residential BIPV balconies → Qualify with Google Solar API → Generate branded proposals. All in one platform.',
     images: ['/how-it-works/hero.png'],
   },
 }

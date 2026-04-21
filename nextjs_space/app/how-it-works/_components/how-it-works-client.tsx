@@ -193,7 +193,7 @@ export function HowItWorksClient() {
             custom={0.1}
             className="mx-auto mt-6 max-w-[800px] font-display text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl"
           >
-            Find commercial rooftops.{' '}
+            Find commercial rooftops & BIPV balconies.{' '}
             <span className="bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
               Close solar deals.
             </span>
