@@ -31,6 +31,15 @@ type SolarLead = {
   solarCarbonOffsetKgYr: number | null
   solarPanelCapacityWatts: number | null
   solarPanelLifetimeYears: number | null
+  // Accuracy fields
+  solarEnriched: boolean
+  solarRoofAreaSqm: number | null
+  solarBuildingAreaSqm: number | null
+  buildingHeightM: number | null
+  roofPitchDeg: number | null
+  roofAzimuthDeg: number | null
+  roofSegmentCount: number | null
+  roofAreaSqm: number | null // original OSM estimate
 }
 
 type ApiResponse = {
@@ -220,6 +229,19 @@ export function SolarInsights({ leadId }: { leadId: string }) {
   const sunHours = lead.solarMaxSunshineHours ?? 0
   const arrayArea = lead.solarMaxArrayAreaSqm ?? 0
 
+  // Accuracy comparisons
+  const googleRoof = lead.solarRoofAreaSqm
+  const osmRoof = lead.roofAreaSqm
+  const hasAccurateRoof = googleRoof != null && googleRoof > 0
+
+  // Azimuth direction label
+  function azimuthLabel(deg: number | null): string {
+    if (deg == null) return '–'
+    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+    const idx = Math.round(deg / 45) % 8
+    return `${dirs[idx]} (${deg}°)`
+  }
+
   return (
     <Card className="overflow-hidden">
       <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-yellow-500/10 px-6 py-5">
@@ -229,6 +251,11 @@ export function SolarInsights({ leadId }: { leadId: string }) {
           <Badge className="bg-amber-500 text-white hover:bg-amber-600">
             Google Solar API
           </Badge>
+          {lead.solarEnriched && (
+            <Badge className="bg-green-600 text-white hover:bg-green-700">
+              ✓ Google-verified
+            </Badge>
+          )}
           {lead.solarImageryQuality ? (
             <Badge variant="outline" className="uppercase">
               {lead.solarImageryQuality} imagery
@@ -278,6 +305,44 @@ export function SolarInsights({ leadId }: { leadId: string }) {
             sub={co2Tonnes > 0 ? `≈ ${Math.round(co2Tonnes * 25).toLocaleString()} trees planted` : undefined}
           />
         </div>
+
+        {/* Accurate roof measurements section */}
+        {hasAccurateRoof && (
+          <div className="mt-6 rounded-lg border border-green-200 bg-green-50/50 p-4 dark:border-green-900/40 dark:bg-green-950/20">
+            <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-green-700 dark:text-green-400">
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              Google-verified measurements
+            </div>
+            <div className="grid gap-3 text-sm sm:grid-cols-3">
+              <MiniRow
+                label="Actual roof area"
+                value={`${Math.round(googleRoof!).toLocaleString()} m²`}
+                highlight
+              />
+              {osmRoof != null && osmRoof > 0 && Math.abs(googleRoof! - osmRoof) > 10 && (
+                <MiniRow
+                  label="OSM estimate was"
+                  value={`${Math.round(osmRoof).toLocaleString()} m² (${googleRoof! > osmRoof ? '+' : ''}${Math.round(((googleRoof! - osmRoof) / osmRoof) * 100)}%)`}
+                />
+              )}
+              {lead.solarBuildingAreaSqm != null && lead.solarBuildingAreaSqm > 0 && (
+                <MiniRow label="Building footprint" value={`${Math.round(lead.solarBuildingAreaSqm).toLocaleString()} m²`} />
+              )}
+              {lead.buildingHeightM != null && lead.buildingHeightM > 0 && (
+                <MiniRow label="Building height" value={`${lead.buildingHeightM} m`} />
+              )}
+              {lead.roofPitchDeg != null && (
+                <MiniRow label="Roof pitch" value={`${lead.roofPitchDeg}°`} />
+              )}
+              {lead.roofAzimuthDeg != null && (
+                <MiniRow label="Roof orientation" value={azimuthLabel(lead.roofAzimuthDeg)} />
+              )}
+              {lead.roofSegmentCount != null && lead.roofSegmentCount > 0 && (
+                <MiniRow label="Roof segments" value={`${lead.roofSegmentCount}`} />
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 grid gap-3 border-t pt-6 text-sm sm:grid-cols-3">
           <MiniRow label="Max usable array area" value={`${Math.round(arrayArea).toLocaleString()} m²`} />
@@ -335,11 +400,11 @@ function HeroStat({
   )
 }
 
-function MiniRow({ label, value }: { label: string; value: string }) {
+function MiniRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-2">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value}</span>
+      <span className={highlight ? 'font-semibold text-green-700 dark:text-green-400' : 'font-medium'}>{value}</span>
     </div>
   )
 }

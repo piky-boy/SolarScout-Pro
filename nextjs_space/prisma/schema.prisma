@@ -121,6 +121,14 @@ model Lead {
   solarPanelCapacityWatts  Float?
   solarPanelLifetimeYears  Int?
   solarRawJson             Json?
+  // Accurate Google Solar measurements
+  solarEnriched            Boolean   @default(false) // true if Solar API data enriched this lead
+  solarRoofAreaSqm         Float?    // wholeRoofStats.areaMeters2 — accurate roof area from Google
+  solarBuildingAreaSqm     Float?    // buildingStats.areaMeters2 — building footprint
+  buildingHeightM          Float?    // derived from roof segment stats
+  roofPitchDeg             Float?    // dominant roof pitch angle (degrees)
+  roofAzimuthDeg           Float?    // dominant roof azimuth (0=N, 90=E, 180=S, 270=W)
+  roofSegmentCount         Int?      // number of usable roof segments
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

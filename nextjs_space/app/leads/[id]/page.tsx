@@ -126,11 +126,19 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
 
             <Card>
               <CardContent className="space-y-5 p-6">
-                <Stat icon={Ruler} label="Estimated roof area" value={`${(lead.roofAreaSqm ?? 0).toLocaleString()} m²`} accent />
+                <Stat
+                  icon={Ruler}
+                  label={lead.solarEnriched ? 'Roof area (Google-verified)' : 'Estimated roof area'}
+                  value={`${(lead.roofAreaSqm ?? 0).toLocaleString()} m²`}
+                  accent
+                />
                 <Stat icon={Building2} label="Building type" value={lead.buildingType ?? '–'} />
+                {lead.buildingHeightM != null && lead.buildingHeightM > 0 && (
+                  <Stat icon={Building2} label="Building height (Google)" value={`${lead.buildingHeightM} m`} />
+                )}
                 {isBipv && (
                   <>
-                    <Stat icon={Layers} label="Est. floors" value={lead.estimatedFloors ? `${lead.estimatedFloors} floors` : '–'} />
+                    <Stat icon={Layers} label={lead.buildingHeightM ? 'Floors (height-derived)' : 'Est. floors'} value={lead.estimatedFloors ? `${lead.estimatedFloors} floors` : '–'} />
                     <Stat icon={Layers} label="Est. balconies (BIPV)" value={lead.estimatedBalconies ? `${lead.estimatedBalconies} balconies` : '–'} accent />
                     <Stat icon={Ruler} label="BIPV glass area" value={lead.bipvAreaSqm ? `${lead.bipvAreaSqm.toLocaleString()} m²` : '–'} />
                   </>

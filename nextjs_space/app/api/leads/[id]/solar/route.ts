@@ -5,10 +5,11 @@ import { prisma } from '@/lib/db'
 import {
   fetchBuildingInsights,
   isSolarApiConfigured,
-  pickBestPanelConfig,
-  computeCarbonOffsetKgPerYear,
-  formatImageryDate,
+  extractAccurateMeasurements,
+  solarMeasurementsToDbUpdate,
+  floorsFromBuildingHeight,
 } from '@/lib/solar'
+import { estimateFloors, estimateBalconies, bipvTotalAreaSqm } from '@/lib/bipv'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -30,6 +31,16 @@ function serializeLead(lead: any) {
     solarCarbonOffsetKgYr: lead.solarCarbonOffsetKgYr ?? null,
     solarPanelCapacityWatts: lead.solarPanelCapacityWatts ?? null,
     solarPanelLifetimeYears: lead.solarPanelLifetimeYears ?? null,
+    // Accuracy fields
+    solarEnriched: lead.solarEnriched ?? false,
+    solarRoofAreaSqm: lead.solarRoofAreaSqm ?? null,
+    solarBuildingAreaSqm: lead.solarBuildingAreaSqm ?? null,
+    buildingHeightM: lead.buildingHeightM ?? null,
+    roofPitchDeg: lead.roofPitchDeg ?? null,
+    roofAzimuthDeg: lead.roofAzimuthDeg ?? null,
+    roofSegmentCount: lead.roofSegmentCount ?? null,
+    // Original OSM estimate for comparison
+    roofAreaSqm: lead.roofAreaSqm ?? null,
   }
 }
 
@@ -86,31 +97,35 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     if (result.status === 'OK' && result.data) {
-      const potential = result.data.solarPotential
-      const best = pickBestPanelConfig(potential)
-      const yearlyEnergyKwh = best?.yearlyEnergyDcKwh
-      const carbonOffset = computeCarbonOffsetKgPerYear(
-        yearlyEnergyKwh,
-        potential?.carbonOffsetFactorKgPerMwh
-      )
+      const measurements = extractAccurateMeasurements(result.data)
+      const dbFields = solarMeasurementsToDbUpdate(measurements)
 
       updateData = {
         ...updateData,
-        solarImageryQuality: result.data.imageryQuality ?? null,
-        solarImageryDate: formatImageryDate(result.data.imageryDate) ?? null,
-        solarMaxPanelCount: potential?.maxArrayPanelsCount ?? null,
-        solarMaxArrayAreaSqm: potential?.maxArrayAreaMeters2 ?? null,
-        solarMaxSunshineHours: potential?.maxSunshineHoursPerYear ?? null,
-        solarYearlyEnergyKwh: yearlyEnergyKwh ?? null,
-        solarCarbonOffsetKgYr: carbonOffset ?? null,
-        solarPanelCapacityWatts: potential?.panelCapacityWatts ?? null,
-        solarPanelLifetimeYears: potential?.panelLifetimeYears ?? null,
+        ...dbFields,
         solarRawJson: result.data as any,
+      }
+
+      // Override OSM roof area with Google's accurate measurement
+      if (measurements.solarRoofAreaSqm && measurements.solarRoofAreaSqm > 0) {
+        updateData.roofAreaSqm = measurements.solarRoofAreaSqm
+      }
+
+      // Refine BIPV floor estimate using building height when available
+      const isBipv = lead.solarType !== 'ROOFTOP'
+      if (isBipv && measurements.buildingHeightM && measurements.buildingHeightM > 0) {
+        const refinedFloors = floorsFromBuildingHeight(measurements.buildingHeightM, true)
+        const rawTags = (lead as any).rawTags ?? {}
+        const refinedBalconies = estimateBalconies(refinedFloors, typeof rawTags === 'object' ? rawTags : {}, measurements.solarRoofAreaSqm ?? lead.roofAreaSqm ?? 400)
+        updateData.estimatedFloors = refinedFloors
+        updateData.estimatedBalconies = refinedBalconies
+        updateData.bipvAreaSqm = Math.round(bipvTotalAreaSqm(refinedBalconies))
       }
     } else {
       // Clear cached values on a non-OK status so UI doesn't show stale data
       updateData = {
         ...updateData,
+        solarEnriched: false,
         solarImageryQuality: null,
         solarImageryDate: null,
         solarMaxPanelCount: null,
@@ -121,6 +136,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         solarPanelCapacityWatts: null,
         solarPanelLifetimeYears: null,
         solarRawJson: null,
+        solarRoofAreaSqm: null,
+        solarBuildingAreaSqm: null,
+        buildingHeightM: null,
+        roofPitchDeg: null,
+        roofAzimuthDeg: null,
+        roofSegmentCount: null,
       }
     }
 

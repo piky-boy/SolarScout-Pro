@@ -6,6 +6,13 @@ import { mapboxGeocode, bboxFromCenter, clampBbox } from '@/lib/mapbox'
 import { findCommercialBuildings, type OsmBuilding } from '@/lib/overpass'
 import { searchNearbyPlacesFanout, isPlacesApiConfigured, haversineMeters, type PlaceLead } from '@/lib/places'
 import { classifySolarType, estimateFloors, estimateBalconies, bipvTotalAreaSqm } from '@/lib/bipv'
+import {
+  fetchBuildingInsights,
+  isSolarApiConfigured,
+  extractAccurateMeasurements,
+  solarMeasurementsToDbUpdate,
+  floorsFromBuildingHeight,
+} from '@/lib/solar'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -326,7 +333,71 @@ export async function POST(request: Request) {
       }
     }
 
-    // Step 6: record search history
+    // Step 6: batch-enrich top leads with Google Solar API (max 15 per scan, rate-limited)
+    const SOLAR_ENRICH_BATCH = 15
+    const SOLAR_DELAY_MS = 200 // 200ms between calls to avoid quota spikes
+    let solarEnrichedCount = 0
+
+    if (isSolarApiConfigured() && savedLeads.length > 0) {
+      // Prioritize leads with largest roof area first (most commercial value)
+      const leadsToEnrich = [...savedLeads]
+        .filter((l) => !l.solarEnriched) // skip already-enriched leads
+        .sort((a, b) => (b.roofAreaSqm ?? 0) - (a.roofAreaSqm ?? 0))
+        .slice(0, SOLAR_ENRICH_BATCH)
+
+      for (const lead of leadsToEnrich) {
+        try {
+          const result = await fetchBuildingInsights(lead.latitude, lead.longitude)
+
+          const enrichUpdate: any = {
+            solarDataFetchedAt: new Date(),
+            solarApiStatus: result.status,
+          }
+
+          if (result.status === 'OK' && result.data) {
+            const measurements = extractAccurateMeasurements(result.data)
+            const dbFields = solarMeasurementsToDbUpdate(measurements)
+            Object.assign(enrichUpdate, dbFields)
+            enrichUpdate.solarRawJson = result.data
+
+            // Override OSM roof area with Google's accurate measurement
+            if (measurements.solarRoofAreaSqm && measurements.solarRoofAreaSqm > 0) {
+              enrichUpdate.roofAreaSqm = measurements.solarRoofAreaSqm
+            }
+
+            // Refine BIPV floor estimates using building height
+            if (lead.solarType !== 'ROOFTOP' && measurements.buildingHeightM && measurements.buildingHeightM > 0) {
+              const refinedFloors = floorsFromBuildingHeight(measurements.buildingHeightM, true)
+              const tags = typeof lead.rawTags === 'object' && lead.rawTags ? lead.rawTags : {}
+              const refinedBalconies = estimateBalconies(refinedFloors, tags as Record<string, string>, measurements.solarRoofAreaSqm ?? lead.roofAreaSqm ?? 400)
+              enrichUpdate.estimatedFloors = refinedFloors
+              enrichUpdate.estimatedBalconies = refinedBalconies
+              enrichUpdate.bipvAreaSqm = Math.round(bipvTotalAreaSqm(refinedBalconies))
+            }
+
+            solarEnrichedCount++
+          }
+
+          await prisma.lead.update({
+            where: { id: lead.id },
+            data: enrichUpdate,
+          })
+
+          // Throttle to be kind to Solar API quota
+          if (SOLAR_DELAY_MS > 0) {
+            await new Promise((r) => setTimeout(r, SOLAR_DELAY_MS))
+          }
+        } catch (e) {
+          console.warn(`[generate] Solar enrichment failed for lead ${lead.id}:`, e)
+        }
+      }
+
+      if (solarEnrichedCount > 0) {
+        console.log(`[generate] Solar-enriched ${solarEnrichedCount}/${leadsToEnrich.length} leads`)
+      }
+    }
+
+    // Step 7: record search history
     try {
       await prisma.searchHistory.create({
         data: {
@@ -360,6 +431,7 @@ export async function POST(request: Request) {
       placesOnlyCount: merged.filter((m) => m.dataSource === 'GOOGLE_PLACES').length,
       residentialCount,
       bipvCount,
+      solarEnrichedCount,
       placesEnabled,
       leads: savedLeads,
     })

@@ -64,6 +64,7 @@ interface LeadItem {
   solarType: string | null
   estimatedBalconies: number | null
   bipvAreaSqm: number | null
+  solarEnriched: boolean
 }
 
 interface FilterOption {

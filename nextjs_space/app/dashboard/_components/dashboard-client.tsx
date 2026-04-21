@@ -162,6 +162,9 @@ export function DashboardClient({ userName, initialTotalLeads, initialRecentSear
         if (typeof data?.bipvCount === 'number' && data.bipvCount > 0) {
           sourceBits.push(`${data.bipvCount} BIPV balcony`)
         }
+        if (typeof data?.solarEnrichedCount === 'number' && data.solarEnrichedCount > 0) {
+          sourceBits.push(`${data.solarEnrichedCount} Solar API verified`)
+        }
         const suffix = sourceBits.length > 0 ? ` — ${sourceBits.join(', ')}` : ''
         toast.success(`Found ${found.length} buildings in ${loc?.placeName ?? q}${suffix}`)
       }
