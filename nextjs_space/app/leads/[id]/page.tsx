@@ -26,6 +26,8 @@ import { LeadNotesForm } from './_components/lead-notes-form'
 import { SolarInsights } from './_components/solar-insights'
 import { OutreachGenerator } from './_components/outreach-generator'
 import { ProposalButton } from './_components/proposal-button'
+import { StreetViewGallery } from './_components/street-view-gallery'
+import { Building3DViewer } from './_components/building-3d-viewer'
 
 export const dynamic = 'force-dynamic'
 
@@ -158,6 +160,12 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                 <Stat icon={CalendarDays} label="Added" value={new Date(lead.createdAt).toLocaleString()} />
               </CardContent>
             </Card>
+          </div>
+
+          {/* Street View & 3D Building Analysis */}
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <StreetViewGallery leadId={lead.id} />
+            <Building3DViewer lat={lead.latitude} lng={lead.longitude} name={displayName} />
           </div>
 
           <div className="mt-6">
