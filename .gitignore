@@ -18,3 +18,10 @@ out
 .deploy
 .logs
 *.tsbuildinfo
+
+# Secrets
+.env
+nextjs_space/.env
+
+# Test recordings
+*.mp4
