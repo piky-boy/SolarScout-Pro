@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
-  const adminEmail = 'admin@sorascout-pro.com'
+  const adminEmail = 'admin@solarscout-pro.com'
   const adminPassword = 'L@nd@n1982'
   const hashedPassword = await bcrypt.hash(adminPassword, 10)
 
