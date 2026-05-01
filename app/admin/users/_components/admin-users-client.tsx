@@ -12,11 +12,23 @@ import {
   Loader2,
   Search,
   FileText,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 
 type SurveyData = {
@@ -48,6 +60,7 @@ export function AdminUsersClient() {
   const [search, setSearch] = useState('')
   const [expandedUser, setExpandedUser] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('all')
 
   const fetchUsers = useCallback(async () => {
@@ -64,6 +77,27 @@ export function AdminUsersClient() {
   }, [])
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
+
+  const handleDelete = async (userId: string) => {
+    setDeleteLoading(userId)
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error ?? 'Failed')
+      }
+      setUsers(prev => prev.filter(u => u.id !== userId))
+      toast.success('User deleted')
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Delete failed. Please try again.')
+    } finally {
+      setDeleteLoading(null)
+    }
+  }
 
   const handleAction = async (userId: string, approved: boolean) => {
     setActionLoading(userId)
@@ -224,28 +258,59 @@ export function AdminUsersClient() {
                     </Button>
                   )}
                   {u.role !== 'ADMIN' && (
-                    u.approved ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleAction(u.id, false)}
-                        disabled={actionLoading === u.id}
-                        className="gap-1 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950"
-                      >
-                        {actionLoading === u.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
-                        Revoke
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={() => handleAction(u.id, true)}
-                        disabled={actionLoading === u.id}
-                        className="gap-1 bg-green-600 text-xs text-white hover:bg-green-700"
-                      >
-                        {actionLoading === u.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                        Approve
-                      </Button>
-                    )
+                    <>
+                      {u.approved ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAction(u.id, false)}
+                          disabled={actionLoading === u.id}
+                          className="gap-1 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950"
+                        >
+                          {actionLoading === u.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
+                          Revoke
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => handleAction(u.id, true)}
+                          disabled={actionLoading === u.id}
+                          className="gap-1 bg-green-600 text-xs text-white hover:bg-green-700"
+                        >
+                          {actionLoading === u.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                          Approve
+                        </Button>
+                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={deleteLoading === u.id}
+                            className="gap-1 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950"
+                          >
+                            {deleteLoading === u.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete user?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete <strong>{u.name || u.email}</strong> and all their data (leads, search history, survey). This cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(u.id)}
+                              className="bg-red-600 text-white hover:bg-red-700"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
                   )}
                 </div>
               </div>

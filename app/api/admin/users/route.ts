@@ -66,3 +66,44 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })
   }
 }
+
+/** DELETE /api/admin/users — permanently delete a user (admin only) */
+export async function DELETE(request: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id || session.user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const body = await request.json().catch(() => ({}))
+    const { userId } = body
+
+    if (!userId) {
+      return NextResponse.json({ error: 'userId is required' }, { status: 400 })
+    }
+
+    if (userId === session.user.id) {
+      return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 })
+    }
+
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    })
+
+    if (!target) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    if (target.role === 'ADMIN') {
+      return NextResponse.json({ error: 'Cannot delete admin users' }, { status: 400 })
+    }
+
+    await prisma.user.delete({ where: { id: userId } })
+
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    console.error('[admin/users] delete error:', err)
+    return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 })
+  }
+}
