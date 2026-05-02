@@ -1,13 +1,15 @@
 import { Metadata } from 'next'
-import { HowItWorksClient } from './_components/how-it-works-client'
-import { SiteHeader } from '@/components/site/site-header'
-import { SiteFooter } from '@/components/site/site-footer'
+import { NextIntlClientProvider } from 'next-intl'
+import { HowItWorksClient } from '@/app/[locale]/how-it-works/_components/how-it-works-client'
+import { SiteHeaderMarketing } from '@/components/site/site-header-marketing'
+import { SiteFooterMarketing } from '@/components/site/site-footer-marketing'
 import {
   buildPageMetadata,
   howToJsonLd,
   breadcrumbJsonLd,
   SITE_URL,
 } from '@/lib/seo'
+import enMessages from '@/messages/en.json'
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'How It Works — Solar Lead Generation in 3 Steps',
@@ -43,6 +45,7 @@ const HOW_TO_STEPS = [
 
 export default function HowItWorksPage() {
   return (
+    <NextIntlClientProvider locale="en" messages={enMessages}>
     <div className="flex min-h-screen flex-col">
       <script
         type="application/ld+json"
@@ -61,9 +64,10 @@ export default function HowItWorksPage() {
           ),
         }}
       />
-      <SiteHeader />
-      <HowItWorksClient />
-      <SiteFooter />
+      <SiteHeaderMarketing />
+      <HowItWorksClient locale="en" />
+      <SiteFooterMarketing />
     </div>
+    </NextIntlClientProvider>
   )
 }

@@ -1,5 +1,7 @@
 import Link from 'next/link'
-import { SiteHeader } from '@/components/site/site-header'
+import { NextIntlClientProvider } from 'next-intl'
+import { SiteHeaderMarketing } from '@/components/site/site-header-marketing'
+import { SiteFooterMarketing } from '@/components/site/site-footer-marketing'
 import { SiteFooter } from '@/components/site/site-footer'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,8 +15,9 @@ import {
   ArrowRight,
   CheckCircle2,
 } from 'lucide-react'
-import { LandingHero } from './_components/landing-hero'
+import { LandingHero } from '@/app/[locale]/_components/landing-hero'
 import { buildPageMetadata, faqJsonLd, SITE_NAME, SITE_URL } from '@/lib/seo'
+import enMessages from '@/messages/en.json'
 
 export const metadata = buildPageMetadata({
   title: 'Automated Solar Lead Generation for Europe',
@@ -134,8 +137,9 @@ const markets = [
 
 export default function HomePage() {
   return (
+    <NextIntlClientProvider locale="en" messages={enMessages}>
     <div className="flex min-h-screen flex-col">
-      <SiteHeader />
+      <SiteHeaderMarketing />
 
       <script
         type="application/ld+json"
@@ -283,7 +287,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <SiteFooter />
+      <SiteFooterMarketing />
     </div>
+    </NextIntlClientProvider>
   )
 }

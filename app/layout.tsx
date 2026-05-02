@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { ChunkLoadErrorHandler } from '@/components/chunk-load-error-handler'
 import { Providers } from '@/components/providers'
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import {
   SITE_NAME,
   SITE_TAGLINE,
@@ -88,13 +89,18 @@ export const metadata: Metadata = {
   category: 'technology',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  // next-intl middleware sets x-next-intl-locale on marketing routes;
+  // fall back to 'en' for app routes (dashboard, leads, admin, etc.)
+  const headersList = await headers()
+  const locale = headersList.get('x-next-intl-locale') ?? 'en'
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"

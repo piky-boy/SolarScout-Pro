@@ -1,3 +1,5 @@
+const withNextIntl = require('next-intl/plugin')('./i18n/request.ts')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   distDir: process.env.NEXT_DIST_DIR || '.next',
@@ -17,4 +19,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);
