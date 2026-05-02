@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { mapboxGeocode, bboxFromCenter, clampBbox } from '@/lib/mapbox'
 import { findCommercialBuildings, type OsmBuilding } from '@/lib/overpass'
 import { searchNearbyPlacesFanout, isPlacesApiConfigured, haversineMeters, type PlaceLead } from '@/lib/places'
+import { getEffectivePlan } from '@/lib/stripe'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -94,9 +95,41 @@ export async function POST(request: Request) {
     const userId = (session?.user as any)?.id as string | undefined
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    // ── Plan limits ─────────────────────────────────────────────────────────
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { plan: true, stripeCurrentPeriodEnd: true },
+    })
+    const activePlan = getEffectivePlan(dbUser ?? { plan: 'free' })
+
+    if (activePlan.scansPerMonth !== -1) {
+      // Count scans this calendar month
+      const monthStart = new Date()
+      monthStart.setDate(1)
+      monthStart.setHours(0, 0, 0, 0)
+      const scansThisMonth = await prisma.searchHistory.count({
+        where: { userId, createdAt: { gte: monthStart } },
+      })
+      if (scansThisMonth >= activePlan.scansPerMonth) {
+        return NextResponse.json(
+          {
+            error: 'scan_limit_reached',
+            message: `You have used all ${activePlan.scansPerMonth} scans for this month on the ${activePlan.name} plan.`,
+            plan: activePlan.id,
+            limit: activePlan.scansPerMonth,
+          },
+          { status: 402 },
+        )
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     const body = await request.json().catch(() => ({}))
     const location = (body?.location ?? '').toString().trim()
-    const limit = Math.max(10, Math.min(Number(body?.limit ?? 75), 250))
+    // Cap leads per scan to plan limit
+    const planLeadCap = activePlan.leadsPerScan
+    const requestedLimit = Math.max(10, Math.min(Number(body?.limit ?? 75), 250))
+    const limit = planLeadCap === -1 ? requestedLimit : Math.min(requestedLimit, planLeadCap)
     if (!location) return NextResponse.json({ error: 'Location is required' }, { status: 400 })
 
     // Step 1: geocode location

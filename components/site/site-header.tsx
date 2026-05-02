@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { SunMedium, LayoutDashboard, List, LogOut, LogIn, Shield } from 'lucide-react'
+import { SunMedium, LayoutDashboard, List, LogOut, LogIn, Shield, CreditCard, Zap } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,10 +27,12 @@ export function SiteHeader() {
     ? [
         { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { href: '/leads', label: 'Leads', icon: List },
+        { href: '/pricing', label: 'Pricing', icon: Zap },
       ]
     : [
         { href: '/#features', label: 'Features', icon: LayoutDashboard },
         { href: '/how-it-works', label: 'How it works', icon: List },
+        { href: '/pricing', label: 'Pricing', icon: Zap },
       ]
 
   return (
@@ -90,6 +92,20 @@ export function SiteHeader() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/leads')}>
                   <List className="mr-2 h-4 w-4" /> My Leads
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push('/pricing')}>
+                  <Zap className="mr-2 h-4 w-4" /> Upgrade plan
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    const res = await fetch('/api/billing/portal', { method: 'POST' })
+                    const data = await res.json()
+                    if (data.url) window.location.href = data.url
+                    else router.push('/pricing')
+                  }}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" /> Manage billing
                 </DropdownMenuItem>
                 {(session?.user as any)?.role === 'ADMIN' && (
                   <DropdownMenuItem onClick={() => router.push('/admin/users')}>

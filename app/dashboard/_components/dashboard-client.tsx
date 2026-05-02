@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { trackEvent } from '@/components/analytics/ga4-events'
+import { UpgradeModal } from '@/components/billing/upgrade-modal'
 import {
   Loader2,
   Search,
@@ -81,6 +82,7 @@ export function DashboardClient({ userName, initialTotalLeads, initialRecentSear
   const [selectedLead, setSelectedLead] = useState<LeadRow | null>(null)
   const [totalLeads, setTotalLeads] = useState(initialTotalLeads)
   const [recent, setRecent] = useState(initialRecentSearches)
+  const [upgradeModal, setUpgradeModal] = useState<{ open: boolean; reason: 'scan_limit' | 'csv_export' | 'ai_outreach' | 'generic' }>({ open: false, reason: 'generic' })
 
   // autocomplete: debounced fetch
   useEffect(() => {
@@ -129,7 +131,11 @@ export function DashboardClient({ userName, initialTotalLeads, initialRecentSear
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data?.error ?? 'Lead generation failed')
+        if (res.status === 402) {
+          setUpgradeModal({ open: true, reason: 'scan_limit' })
+        } else {
+          toast.error(data?.error ?? 'Lead generation failed')
+        }
         return
       }
       const found = Array.isArray(data?.leads) ? data.leads : []
@@ -193,7 +199,12 @@ export function DashboardClient({ userName, initialTotalLeads, initialRecentSear
         body: JSON.stringify({ format: 'csv', ids: leads.map((l) => l.id) }),
       })
       if (!res.ok) {
-        toast.error('Export failed')
+        const data = await res.json().catch(() => ({}))
+        if (res.status === 402) {
+          setUpgradeModal({ open: true, reason: 'csv_export' })
+        } else {
+          toast.error(data?.error ?? 'Export failed')
+        }
         return
       }
       const blob = await res.blob()
@@ -215,6 +226,11 @@ export function DashboardClient({ userName, initialTotalLeads, initialRecentSear
 
   return (
     <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-6 lg:px-8">
+      <UpgradeModal
+        open={upgradeModal.open}
+        onClose={() => setUpgradeModal((s) => ({ ...s, open: false }))}
+        reason={upgradeModal.reason}
+      />
       {/* Greeting + quick stats */}
       <div className="mb-8">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
