@@ -2,15 +2,33 @@ import { getTranslations } from 'next-intl/server'
 import { SiteHeaderMarketing } from '@/components/site/site-header-marketing'
 import { SiteFooterMarketing } from '@/components/site/site-footer-marketing'
 import { HowItWorksClient } from './_components/how-it-works-client'
-import { buildPageMetadata, howToJsonLd, breadcrumbJsonLd, SITE_URL } from '@/lib/seo'
+import { buildLocalizedMetadata, howToJsonLd, breadcrumbJsonLd, SITE_URL } from '@/lib/seo'
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params
-  return buildPageMetadata({
+const HOW_IT_WORKS_TRANSLATIONS = {
+  en: {
     title: 'How It Works — Solar Lead Generation in 3 Steps',
     description:
       'See how SolarScout Pro automatically detects commercial rooftops, qualifies solar leads with real Google Solar API data, and generates branded PDF proposals in minutes.',
-    path: locale === 'en' ? '/how-it-works' : `/${locale}/how-it-works`,
+  },
+  es: {
+    title: 'Cómo Funciona — Generación de Leads Solares en 3 Pasos',
+    description:
+      'Descubre cómo SolarScout Pro detecta automáticamente tejados comerciales, cualifica leads solares con datos reales de Google Solar API y genera propuestas PDF en minutos.',
+  },
+  sq: {
+    title: 'Si Funksionon — Gjenerimi i Drejtmeve Diellore në 3 Hapa',
+    description:
+      'Zbulo si SolarScout Pro zbulon automatikisht çatitë komerciale, kualifikon drejtmet diellore me të dhëna reale nga Google Solar API dhe gjeneron propozime PDF të markës në minuta.',
+  },
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params
+  return buildLocalizedMetadata({
+    translations: HOW_IT_WORKS_TRANSLATIONS,
+    basePath: '/how-it-works',
+    locale,
+    ogImage: '/how-it-works/hero.png',
   })
 }
 

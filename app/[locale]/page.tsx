@@ -15,17 +15,32 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { LandingHero } from './_components/landing-hero'
-import { buildPageMetadata, faqJsonLd, SITE_NAME, SITE_URL } from '@/lib/seo'
+import { buildLocalizedMetadata, faqJsonLd, SITE_NAME, SITE_URL } from '@/lib/seo'
+
+const HOME_TRANSLATIONS = {
+  en: {
+    title: 'Automated Solar Lead Generation for Europe',
+    description:
+      'Find warehouses, factories and commercial rooftops across Romania, Spain, Portugal, Albania and the United Kingdom in minutes. Export qualified solar leads to CSV or Excel.',
+  },
+  es: {
+    title: 'Generación Automatizada de Leads Solares para Europa',
+    description:
+      'Detecta automáticamente naves industriales, fábricas y tejados comerciales en España, Portugal, Rumanía, Albania y el Reino Unido. Exporta leads solares cualificados a CSV o Excel.',
+  },
+  sq: {
+    title: 'Gjenerimi Automatik i Drejtmeve Diellore për Evropën',
+    description:
+      'Zbulo automatikisht magazina, fabrika dhe çati komerciale në Shqipëri, Spanjë, Portugali, Rumani dhe Mbretërinë e Bashkuar. Eksporto drejtme diellore të kualifikuara në CSV ose Excel.',
+  },
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
-  const t = await getTranslations({ locale, namespace: 'faq' })
-
-  return buildPageMetadata({
-    title: 'Automated Solar Lead Generation for Europe',
-    description:
-      'Find warehouses, factories and commercial rooftops across Romania, Spain, Portugal, Albania and the United Kingdom in minutes.',
-    path: locale === 'en' ? '/' : `/${locale}`,
+  return buildLocalizedMetadata({
+    translations: HOME_TRANSLATIONS,
+    basePath: '/',
+    locale,
   })
 }
 

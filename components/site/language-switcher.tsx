@@ -3,6 +3,7 @@
 import { useLocale } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/navigation'
 import { routing } from '@/i18n/routing'
+import { trackEvent } from '@/components/analytics/ga4-events'
 
 const LANG_META: Record<string, { label: string; flag: string }> = {
   en: { label: 'EN', flag: '🇬🇧' },
@@ -17,6 +18,7 @@ export function LanguageSwitcher() {
 
   function switchLocale(next: string) {
     if (next === locale) return
+    trackEvent('language_switch', { from_locale: locale, to_locale: next })
     router.push(pathname, { locale: next })
   }
 

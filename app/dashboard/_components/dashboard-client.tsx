@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { trackEvent } from '@/components/analytics/ga4-events'
 import {
   Loader2,
   Search,
@@ -115,6 +116,7 @@ export function DashboardClient({ userName, initialTotalLeads, initialRecentSear
       toast.error('Enter a city or region first')
       return
     }
+    trackEvent('generate_leads_click', { location: q })
     setGenerating(true)
     setShowSuggestions(false)
     setLeads([])
@@ -202,6 +204,7 @@ export function DashboardClient({ userName, initialTotalLeads, initialRecentSear
       a.click()
       a.remove()
       URL.revokeObjectURL(url)
+      trackEvent('csv_export', { lead_count: leads.length })
       toast.success('CSV downloaded')
     } catch (err) {
       console.error(err)

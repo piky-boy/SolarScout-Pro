@@ -41,6 +41,7 @@ import {
   type BusinessCase,
   defaultLanguageForCountry,
 } from '@/lib/outreach'
+import { trackEvent } from '@/components/analytics/ga4-events'
 
 export interface OutreachGeneratorProps {
   leadId: string
@@ -93,6 +94,7 @@ export function OutreachGenerator({
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || `Request failed (${res.status})`)
       setData(json)
+      trackEvent('outreach_generated', { lead_id: leadId, locale: language, tone })
       toast.success('Outreach kit ready', {
         description: 'Email, call script and WhatsApp message generated.',
       })

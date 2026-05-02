@@ -37,6 +37,35 @@ export const BASE_KEYWORDS = [
   ...MARKETS.map((m) => `${m} solar`),
 ]
 
+/** Per-locale keyword extensions */
+export const LOCALE_KEYWORDS: Record<string, string[]> = {
+  en: ['solar leads UK', 'solar leads Romania', 'solar leads Portugal'],
+  es: [
+    'leads solares España',
+    'generación de leads solares',
+    'detección de tejados comerciales',
+    'prospectos energía solar',
+    'leads fotovoltaicos',
+    'herramienta captación solar',
+    'leads solares Europa',
+  ],
+  sq: [
+    'drejtme diellore Shqipëri',
+    'gjenerimi i drejtmeve diellore',
+    'zbulimi i çative komerciale',
+    'drejtme fotovoltaike',
+    'mjet prospektimi diellor',
+    'drejtme diellore Europë',
+  ],
+}
+
+/** OG locale mapping */
+export const LOCALE_OG: Record<string, string> = {
+  en: 'en_US',
+  es: 'es_ES',
+  sq: 'sq_AL',
+}
+
 /* ------------------------------------------------------------------ */
 /*  Google Search Console verification                                 */
 /* ------------------------------------------------------------------ */
@@ -63,6 +92,8 @@ interface PageSEO {
   ogType?: 'website' | 'article'
   /** noindex this page */
   noIndex?: boolean
+  /** OG locale override (e.g. 'es_ES') */
+  ogLocale?: string
 }
 
 export function buildPageMetadata(seo: PageSEO): Metadata {
@@ -88,7 +119,7 @@ export function buildPageMetadata(seo: PageSEO): Metadata {
         },
       ],
       type: seo.ogType ?? 'website',
-      locale: 'en_US',
+      locale: seo.ogLocale ?? 'en_US',
     },
     twitter: {
       card: 'summary_large_image',
@@ -97,6 +128,76 @@ export function buildPageMetadata(seo: PageSEO): Metadata {
       images: [image],
     },
     ...(seo.noIndex ? { robots: { index: false, follow: false } } : {}),
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Helper: build localized metadata with hreflang alternates          */
+/* ------------------------------------------------------------------ */
+
+interface LocalizedPageSEO {
+  /** Translations keyed by locale */
+  translations: Record<string, { title: string; description: string }>
+  /** Base path without locale prefix, e.g. '/' or '/how-it-works' */
+  basePath: string
+  /** Current locale */
+  locale: string
+  /** Extra keywords to merge (locale-aware, merged on top of LOCALE_KEYWORDS) */
+  extraKeywords?: string[]
+  /** Custom OG image */
+  ogImage?: string
+}
+
+export function buildLocalizedMetadata(seo: LocalizedPageSEO): Metadata {
+  const { locale, basePath, translations } = seo
+  const t = translations[locale] ?? translations['en']
+  const ogLocale = LOCALE_OG[locale] ?? 'en_US'
+  const image = seo.ogImage ?? OG_IMAGE
+
+  // Canonical URL for this locale
+  const canonicalPath = locale === 'en' ? basePath : `/${locale}${basePath === '/' ? '' : basePath}`
+  const canonicalUrl = `${SITE_URL}${canonicalPath}`
+
+  // hreflang alternates — en at root, others prefixed
+  const hreflangPath = (loc: string) =>
+    loc === 'en' ? basePath : `/${loc}${basePath === '/' ? '' : basePath}`
+
+  const languages: Record<string, string> = {
+    'x-default': `${SITE_URL}${hreflangPath('en')}`,
+    en: `${SITE_URL}${hreflangPath('en')}`,
+    es: `${SITE_URL}${hreflangPath('es')}`,
+    sq: `${SITE_URL}${hreflangPath('sq')}`,
+  }
+
+  const keywords = [
+    ...BASE_KEYWORDS,
+    ...(LOCALE_KEYWORDS[locale] ?? []),
+    ...(seo.extraKeywords ?? []),
+  ]
+
+  return {
+    title: t.title,
+    description: t.description,
+    keywords,
+    alternates: {
+      canonical: canonicalUrl,
+      languages,
+    },
+    openGraph: {
+      title: `${t.title} | ${SITE_NAME}`,
+      description: t.description,
+      url: canonicalUrl,
+      siteName: SITE_NAME,
+      images: [{ url: image, width: 1200, height: 630, alt: `${t.title} — ${SITE_NAME}` }],
+      type: 'website',
+      locale: ogLocale,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${t.title} | ${SITE_NAME}`,
+      description: t.description,
+      images: [image],
+    },
   }
 }
 
@@ -114,13 +215,103 @@ export function organizationJsonLd() {
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Web',
     description: SITE_DESCRIPTION,
+    inLanguage: ['en', 'es', 'sq'],
     offers: {
       '@type': 'Offer',
       price: '0',
       priceCurrency: 'USD',
       availability: 'https://schema.org/InStock',
     },
+    sameAs: [
+      'https://www.linkedin.com/company/solarscout-pro',
+      'https://twitter.com/solarscoutpro',
+    ],
+    knowsAbout: [
+      'Solar Energy',
+      'Lead Generation',
+      'Commercial Rooftop Solar',
+      'Photovoltaic Systems',
+      'Satellite Building Detection',
+      'Google Solar API',
+      'OpenStreetMap',
+    ],
     aggregateRating: undefined, // Add when you have real ratings
+  }
+}
+
+/**
+ * Service schema — strong GEO (Generative Engine Optimisation) signal.
+ * Tells AI crawlers (ChatGPT, Perplexity, Gemini) what this service does
+ * and where it operates.
+ */
+export function serviceJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: `${SITE_NAME} — Solar Lead Generation`,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    serviceType: 'Solar Lead Generation Software',
+    category: 'B2B SaaS',
+    provider: {
+      '@type': 'Organization',
+      name: SITE_NAME,
+      url: SITE_URL,
+    },
+    areaServed: [
+      { '@type': 'Country', name: 'Romania', sameAs: 'https://www.wikidata.org/wiki/Q218' },
+      { '@type': 'Country', name: 'Spain',   sameAs: 'https://www.wikidata.org/wiki/Q29' },
+      { '@type': 'Country', name: 'Portugal', sameAs: 'https://www.wikidata.org/wiki/Q45' },
+      { '@type': 'Country', name: 'Albania',  sameAs: 'https://www.wikidata.org/wiki/Q222' },
+      { '@type': 'Country', name: 'United Kingdom', sameAs: 'https://www.wikidata.org/wiki/Q145' },
+    ],
+    audience: {
+      '@type': 'BusinessAudience',
+      audienceType: 'Solar energy companies, photovoltaic installers, B2B sales teams',
+    },
+    hasOfferCatalog: {
+      '@type': 'OfferCatalog',
+      name: 'SolarScout Pro Plans',
+      itemListElement: [
+        {
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: 'Automated Commercial Rooftop Detection',
+          },
+        },
+        {
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: 'Google Solar API Integration & Financial Analysis',
+          },
+        },
+        {
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: 'AI Outreach Kit — Email, Call Script & WhatsApp',
+          },
+        },
+      ],
+    },
+  }
+}
+
+/**
+ * Speakable schema — AEO (Answer Engine Optimisation).
+ * Marks the key answer-worthy sections for voice search and AI assistants.
+ */
+export function speakableJsonLd(pageUrl: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    url: pageUrl,
+    speakable: {
+      '@type': 'SpeakableSpecification',
+      cssSelector: ['h1', 'h2', '.speakable'],
+    },
   }
 }
 

@@ -34,6 +34,21 @@ export const metadata = buildPageMetadata({
     'warehouse solar panel leads',
     'factory rooftop solar',
   ],
+  ogLocale: 'en_US',
+})
+
+// Inject hreflang alternates that Next.js metadata doesn't expose from static export
+// (Next.js will render <link rel="alternate" hreflang="..."> from alternates)
+Object.assign(metadata, {
+  alternates: {
+    canonical: `${SITE_URL}/`,
+    languages: {
+      'x-default': `${SITE_URL}/`,
+      en: `${SITE_URL}/`,
+      es: `${SITE_URL}/es`,
+      sq: `${SITE_URL}/sq`,
+    },
+  },
 })
 
 const FAQ_ITEMS = [

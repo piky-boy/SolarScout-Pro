@@ -1,0 +1,16 @@
+import createMiddleware from 'next-intl/middleware'
+import { routing } from './i18n/routing'
+
+export default createMiddleware(routing)
+
+export const config = {
+  // Run on marketing pages only — skip app routes, API, auth, static assets
+  matcher: [
+    '/',
+    '/(es|sq)/:path*',
+    '/how-it-works',
+    '/how-it-works/:path*',
+    // Exclude everything that must stay at the root (no locale prefix)
+    '/((?!api|dashboard|leads|admin|login|waitlist|signup|_next|.*\\..*).*)',
+  ],
+}

@@ -16,6 +16,8 @@ import {
   GOOGLE_SITE_VERIFICATION,
   organizationJsonLd,
   webSiteJsonLd,
+  serviceJsonLd,
+  speakableJsonLd,
 } from '@/lib/seo'
 
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-sans' })
@@ -102,6 +104,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        {/* ── Structured data: Organization + WebSite + Service (AEO/GEO) ── */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -114,11 +117,35 @@ export default async function RootLayout({
             __html: JSON.stringify(webSiteJsonLd()),
           }}
         />
-        <script src="https://apps.abacus.ai/chatllm/appllm-lib.js" async></script>
-        <link
-          href="https://api.mapbox.com/mapbox-gl-js/v3.5.2/mapbox-gl.css"
-          rel="stylesheet"
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(serviceJsonLd()),
+          }}
         />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(speakableJsonLd(SITE_URL)),
+          }}
+        />
+
+        {/* ── GA4 (direct gtag.js — works with or without GTM) ── */}
+        {process.env.NEXT_PUBLIC_GA4_ID && (
+          <>
+            <script
+              async
+              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA4_ID}`}
+            />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${process.env.NEXT_PUBLIC_GA4_ID}',{send_page_view:false});`,
+              }}
+            />
+          </>
+        )}
+
+        {/* ── Google Tag Manager ── */}
         {process.env.NEXT_PUBLIC_GTM_ID && (
           <script
             dangerouslySetInnerHTML={{
@@ -126,6 +153,12 @@ export default async function RootLayout({
             }}
           />
         )}
+
+        <script src="https://apps.abacus.ai/chatllm/appllm-lib.js" async></script>
+        <link
+          href="https://api.mapbox.com/mapbox-gl-js/v3.5.2/mapbox-gl.css"
+          rel="stylesheet"
+        />
       </head>
       <body className={`${dmSans.variable} ${jakartaSans.variable} ${jetbrainsMono.variable} font-sans`}>
         {process.env.NEXT_PUBLIC_GTM_ID && (

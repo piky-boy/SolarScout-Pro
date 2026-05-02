@@ -11,22 +11,34 @@ import {
 } from '@/lib/seo'
 import enMessages from '@/messages/en.json'
 
-export const metadata: Metadata = buildPageMetadata({
-  title: 'How It Works — Solar Lead Generation in 3 Steps',
-  description:
-    'See how SolarScout Pro automatically detects commercial rooftops, qualifies solar leads with real Google Solar API data, and generates branded PDF proposals in minutes. Three steps from search to signed deal.',
-  path: '/how-it-works',
-  keywords: [
-    'solar lead generation steps',
-    'how to find solar leads',
-    'Google Solar API',
-    'solar proposal generator',
-    'commercial rooftop detection how it works',
-    'satellite solar analysis',
-    'solar PDF proposal',
-  ],
-  ogImage: '/how-it-works/hero.png',
-})
+export const metadata: Metadata = {
+  ...buildPageMetadata({
+    title: 'How It Works — Solar Lead Generation in 3 Steps',
+    description:
+      'See how SolarScout Pro automatically detects commercial rooftops, qualifies solar leads with real Google Solar API data, and generates branded PDF proposals in minutes. Three steps from search to signed deal.',
+    path: '/how-it-works',
+    keywords: [
+      'solar lead generation steps',
+      'how to find solar leads',
+      'Google Solar API',
+      'solar proposal generator',
+      'commercial rooftop detection how it works',
+      'satellite solar analysis',
+      'solar PDF proposal',
+    ],
+    ogImage: '/how-it-works/hero.png',
+    ogLocale: 'en_US',
+  }),
+  alternates: {
+    canonical: `${SITE_URL}/how-it-works`,
+    languages: {
+      'x-default': `${SITE_URL}/how-it-works`,
+      en: `${SITE_URL}/how-it-works`,
+      es: `${SITE_URL}/es/how-it-works`,
+      sq: `${SITE_URL}/sq/how-it-works`,
+    },
+  },
+}
 
 const HOW_TO_STEPS = [
   {
