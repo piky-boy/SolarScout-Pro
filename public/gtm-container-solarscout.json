@@ -13,7 +13,7 @@
       "accountId": "0",
       "containerId": "0",
       "name": "SolarScout Pro",
-      "publicId": "GTM-XXXXXXX",
+      "publicId": "GTM-TCBSJJDJ",
       "usageContext": ["WEB"]
     },
 
@@ -142,7 +142,7 @@
         "name": "CONST — GA4 Measurement ID",
         "type": "c",
         "parameter": [
-          { "type": "TEMPLATE", "key": "value", "value": "G-PLMVZWCDG4" }
+          { "type": "TEMPLATE", "key": "value", "value": "G-1HH0Z6C5PH" }
         ],
         "fingerprint": "10"
       }
@@ -303,7 +303,7 @@
         "type": "gaawe",
         "parameter": [
           { "type": "TEMPLATE", "key": "eventName", "value": "page_view" },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "{{CONST — GA4 Measurement ID}}" },
+          { "type": "TEMPLATE", "key": "measurementIdOverride", "value": "{{CONST — GA4 Measurement ID}}" },
           {
             "type": "LIST",
             "key": "eventParameters",
@@ -337,7 +337,7 @@
         "type": "gaawe",
         "parameter": [
           { "type": "TEMPLATE", "key": "eventName", "value": "generate_leads_click" },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "{{CONST — GA4 Measurement ID}}" },
+          { "type": "TEMPLATE", "key": "measurementIdOverride", "value": "{{CONST — GA4 Measurement ID}}" },
           {
             "type": "LIST",
             "key": "eventParameters",
@@ -364,7 +364,7 @@
         "type": "gaawe",
         "parameter": [
           { "type": "TEMPLATE", "key": "eventName", "value": "language_switch" },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "{{CONST — GA4 Measurement ID}}" },
+          { "type": "TEMPLATE", "key": "measurementIdOverride", "value": "{{CONST — GA4 Measurement ID}}" },
           {
             "type": "LIST",
             "key": "eventParameters",
@@ -398,7 +398,7 @@
         "type": "gaawe",
         "parameter": [
           { "type": "TEMPLATE", "key": "eventName", "value": "lead_detail_view" },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "{{CONST — GA4 Measurement ID}}" },
+          { "type": "TEMPLATE", "key": "measurementIdOverride", "value": "{{CONST — GA4 Measurement ID}}" },
           {
             "type": "LIST",
             "key": "eventParameters",
@@ -432,7 +432,7 @@
         "type": "gaawe",
         "parameter": [
           { "type": "TEMPLATE", "key": "eventName", "value": "outreach_generated" },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "{{CONST — GA4 Measurement ID}}" },
+          { "type": "TEMPLATE", "key": "measurementIdOverride", "value": "{{CONST — GA4 Measurement ID}}" },
           {
             "type": "LIST",
             "key": "eventParameters",
@@ -473,7 +473,7 @@
         "type": "gaawe",
         "parameter": [
           { "type": "TEMPLATE", "key": "eventName", "value": "csv_export" },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "{{CONST — GA4 Measurement ID}}" },
+          { "type": "TEMPLATE", "key": "measurementIdOverride", "value": "{{CONST — GA4 Measurement ID}}" },
           {
             "type": "LIST",
             "key": "eventParameters",
