@@ -289,7 +289,17 @@ function BcStat({
   )
 }
 
-function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
+function CopyButton({
+  text,
+  label = 'Copy',
+  channel,
+  leadId,
+}: {
+  text: string
+  label?: string
+  channel?: 'email' | 'call' | 'whatsapp'
+  leadId?: string
+}) {
   const [copied, setCopied] = useState(false)
   return (
     <Button
@@ -301,6 +311,7 @@ function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) 
           setCopied(true)
           toast.success('Copied to clipboard')
           setTimeout(() => setCopied(false), 1800)
+          if (channel) trackEvent('outreach_copy', { channel, lead_id: leadId })
         } catch {
           toast.error('Could not access clipboard')
         }
@@ -361,9 +372,9 @@ function EmailPane({
         />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <CopyButton text={subject} label="Copy subject" />
-        <CopyButton text={bodyText} label="Copy body" />
-        <CopyButton text={fullText} label="Copy all" />
+        <CopyButton text={subject} label="Copy subject" channel="email" />
+        <CopyButton text={bodyText} label="Copy body" channel="email" />
+        <CopyButton text={fullText} label="Copy all" channel="email" />
         <a href={mailtoHref}>
           <Button size="sm" className="bg-violet-600 text-white hover:bg-violet-700">
             <Mail className="mr-2 h-3.5 w-3.5" />
@@ -425,7 +436,7 @@ function CallPane({
       <ScriptBlock title="Closing" text={kit.call.closing} />
 
       <div className="flex flex-wrap items-center gap-2">
-        <CopyButton text={fullScript} label="Copy full script" />
+        <CopyButton text={fullScript} label="Copy full script" channel="call" />
         {contactPhone ? (
           <a href={`tel:${contactPhone.replace(/\s+/g, '')}`}>
             <Button size="sm" className="bg-violet-600 text-white hover:bg-violet-700">
@@ -501,7 +512,7 @@ function WhatsAppPane({
         />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <CopyButton text={message} label="Copy message" />
+        <CopyButton text={message} label="Copy message" channel="whatsapp" />
         <a href={waHref} target="_blank" rel="noreferrer">
           <Button size="sm" className="bg-[#25D366] text-white hover:bg-[#1faa55]">
             <MessageCircle className="mr-2 h-3.5 w-3.5" />

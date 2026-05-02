@@ -163,6 +163,7 @@ export function DashboardClient({ userName, initialTotalLeads, initialRecentSear
         }
         const suffix = sourceBits.length > 0 ? ` — ${sourceBits.join(', ')}` : ''
         toast.success(`Found ${found.length} commercial rooftops in ${loc?.placeName ?? q}${suffix}`)
+        trackEvent('leads_generated', { location: loc?.placeName ?? q, count: found.length })
       }
     } catch (err: any) {
       console.error(err)
