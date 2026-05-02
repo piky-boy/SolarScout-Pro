@@ -26,7 +26,7 @@ export function middleware(request: NextRequest) {
   // Detect country: Vercel Edge Network sets request.geo,
   // Cloudflare sets the CF-IPCountry header as a fallback.
   const country = (
-    request.geo?.country ??
+    (request as any).geo?.country ??
     request.headers.get('cf-ipcountry') ??
     ''
   ).toUpperCase()
