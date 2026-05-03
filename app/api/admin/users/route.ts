@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/admin/users — list all users (admin only) */
+/** GET /api/admin/users — list all users with activity counts (admin only) */
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
@@ -21,14 +21,52 @@ export async function GET() {
         email: true,
         role: true,
         approved: true,
+        plan: true,
         surveyCompleted: true,
         createdAt: true,
         surveyResponse: true,
-        _count: { select: { leads: true } },
+        _count: { select: { leads: true, searchHistory: true, activityLogs: true } },
       },
     })
 
-    return NextResponse.json(users)
+    // Fetch per-user activity breakdowns in a single aggregation
+    const activityBreakdown = await prisma.activityLog.groupBy({
+      by: ['userId', 'action'],
+      _count: { action: true },
+    })
+
+    // Build a map: userId → action → count
+    const actMap = new Map<string, Record<string, number>>()
+    for (const row of activityBreakdown) {
+      if (!actMap.has(row.userId)) actMap.set(row.userId, {})
+      actMap.get(row.userId)![row.action] = row._count.action
+    }
+
+    // Get last-active per user
+    const lastActive = await prisma.activityLog.groupBy({
+      by: ['userId'],
+      _max: { createdAt: true },
+    })
+    const lastActiveMap = new Map(lastActive.map((r) => [r.userId, r._max.createdAt]))
+
+    const enriched = users.map((u) => {
+      const acts = actMap.get(u.id) ?? {}
+      return {
+        ...u,
+        activity: {
+          scansRun: acts['scan_run'] ?? 0,
+          leadsViewed: acts['lead_viewed'] ?? 0,
+          leadsSaved: acts['lead_saved'] ?? 0,
+          statusChanges: acts['lead_status_changed'] ?? 0,
+          exports: acts['lead_exported'] ?? 0,
+          outreachGenerated: acts['outreach_generated'] ?? 0,
+          proposalsGenerated: acts['proposal_generated'] ?? 0,
+          lastActive: lastActiveMap.get(u.id) ?? null,
+        },
+      }
+    })
+
+    return NextResponse.json(enriched)
   } catch (err: any) {
     console.error('[admin/users] list error:', err)
     return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })

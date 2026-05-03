@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logActivity } from '@/lib/activity'
 import {
   computeBusinessCase,
   OUTREACH_TONES,
@@ -195,6 +196,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'Malformed LLM response' }, { status: 502 })
     }
 
+    logActivity(userId, 'outreach_generated', { language, tone }, id)
     return NextResponse.json({
       language,
       tone,

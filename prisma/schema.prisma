@@ -34,6 +34,7 @@ model User {
   leads           Lead[]
   searchHistory   SearchHistory[]
   surveyResponse  SurveyResponse?
+  activityLogs    ActivityLog[]
 }
 
 model SurveyResponse {
@@ -149,4 +150,23 @@ model SearchHistory {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model ActivityLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  // Action types:
+  // scan_run | lead_viewed | lead_saved | lead_status_changed
+  // lead_exported | outreach_generated | proposal_generated
+  action    String
+  leadId    String?  @db.ObjectId
+  meta      Json?    // e.g. { location, count, format, status, tone }
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([userId, action])
 }

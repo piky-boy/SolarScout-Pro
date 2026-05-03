@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logActivity } from '@/lib/activity'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +14,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const lead = await prisma.lead.findFirst({ where: { id, userId } })
     if (!lead) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    logActivity(userId, 'lead_viewed', undefined, id)
     return NextResponse.json({ lead })
   } catch (err: any) {
     console.error('[lead GET] error:', err?.message ?? err)
@@ -38,6 +40,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     const updated = await prisma.lead.update({ where: { id }, data })
+
+    // Log status change events
+    if ('status' in data) {
+      const action = data.status === 'SAVED' ? 'lead_saved' : 'lead_status_changed'
+      logActivity(userId, action, { status: data.status }, id)
+    }
+
     return NextResponse.json({ lead: updated })
   } catch (err: any) {
     console.error('[lead PATCH] error:', err?.message ?? err)

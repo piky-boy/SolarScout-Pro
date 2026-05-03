@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logActivity } from '@/lib/activity'
 import { computeBusinessCase, defaultLanguageForCountry } from '@/lib/outreach'
 import { renderProposalHtml } from '@/lib/proposal-html'
 import {
@@ -327,6 +328,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             .replace(/[^a-z0-9]+/gi, '-')
             .toLowerCase()
             .slice(0, 60)}.pdf`
+          logActivity(userId, 'proposal_generated', { proposalLanguage: language }, id)
           return new NextResponse(new Uint8Array(pdfBuffer), {
             status: 200,
             headers: {

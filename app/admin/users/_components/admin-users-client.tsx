@@ -42,16 +42,29 @@ type SurveyData = {
   createdAt: string
 }
 
+type ActivityCounts = {
+  scansRun: number
+  leadsViewed: number
+  leadsSaved: number
+  statusChanges: number
+  exports: number
+  outreachGenerated: number
+  proposalsGenerated: number
+  lastActive: string | null
+}
+
 type UserRecord = {
   id: string
   name: string | null
   email: string
   role: string
   approved: boolean
+  plan: string | null
   surveyCompleted: boolean
   createdAt: string
   surveyResponse: SurveyData | null
-  _count: { leads: number }
+  _count: { leads: number; searchHistory: number; activityLogs: number }
+  activity: ActivityCounts
 }
 
 export function AdminUsersClient() {
@@ -240,8 +253,18 @@ export function AdminUsersClient() {
                   </div>
                   <p className="mt-0.5 truncate text-sm text-muted-foreground">{u.email}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Joined {new Date(u.createdAt).toLocaleDateString()} · {u._count.leads} leads
+                    Joined {new Date(u.createdAt).toLocaleDateString()}
+                    {u.plan && <span> · <span className="font-medium capitalize">{u.plan.toLowerCase()}</span></span>}
                   </p>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground/70">
+                    <span>{u._count.leads} leads</span>
+                    <span>{u.activity?.scansRun ?? 0} scans</span>
+                    <span>{u.activity?.exports ?? 0} exports</span>
+                    <span>{u.activity?.proposalsGenerated ?? 0} proposals</span>
+                    {u.activity?.lastActive && (
+                      <span>last active {new Date(u.activity.lastActive).toLocaleDateString()}</span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">

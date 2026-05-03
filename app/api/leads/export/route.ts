@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import * as XLSX from 'xlsx'
 import { getEffectivePlan } from '@/lib/stripe'
+import { logActivity } from '@/lib/activity'
 
 export const dynamic = 'force-dynamic'
 
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
       const ws = XLSX.utils.json_to_sheet(rows, { header: EXPORT_COLUMNS.map((c) => c.label) })
       XLSX.utils.book_append_sheet(wb, ws, 'Leads')
       const buf: Buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+      logActivity(userId, 'lead_exported', { format: 'xlsx', exportCount: leads.length })
       return new NextResponse(buf, {
         status: 200,
         headers: {
@@ -116,6 +118,7 @@ export async function POST(request: Request) {
       }).join(','),
     )
     const csv = [header, ...lines].join('\n')
+    logActivity(userId, 'lead_exported', { format: 'csv', exportCount: leads.length })
     return new NextResponse(csv, {
       status: 200,
       headers: {

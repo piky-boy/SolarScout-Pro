@@ -6,6 +6,7 @@ import { mapboxGeocode, bboxFromCenter, clampBbox } from '@/lib/mapbox'
 import { findCommercialBuildings, type OsmBuilding } from '@/lib/overpass'
 import { searchNearbyPlacesFanout, isPlacesApiConfigured, haversineMeters, type PlaceLead } from '@/lib/places'
 import { getEffectivePlan } from '@/lib/stripe'
+import { logActivity } from '@/lib/activity'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -316,7 +317,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Step 6: record search history
+    // Step 6: record search history + activity log
     try {
       await prisma.searchHistory.create({
         data: {
@@ -329,6 +330,11 @@ export async function POST(request: Request) {
     } catch (e) {
       console.error('[generate] search history failed:', e)
     }
+    logActivity(userId, 'scan_run', {
+      location: geo.placeName,
+      country: geo.countryName ?? undefined,
+      count: saved,
+    })
 
     return NextResponse.json({
       location: {

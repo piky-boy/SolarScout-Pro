@@ -108,9 +108,14 @@ export function SiteHeader() {
                   <CreditCard className="mr-2 h-4 w-4" /> Manage billing
                 </DropdownMenuItem>
                 {(session?.user as any)?.role === 'ADMIN' && (
-                  <DropdownMenuItem onClick={() => router.push('/admin/users')}>
-                    <Shield className="mr-2 h-4 w-4" /> Admin Panel
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem onClick={() => router.push('/admin/users')}>
+                      <Shield className="mr-2 h-4 w-4" /> Admin — Users
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push('/admin/activity')}>
+                      <Shield className="mr-2 h-4 w-4" /> Admin — Activity
+                    </DropdownMenuItem>
+                  </>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut({ callbackUrl: '/login' })}>
