@@ -44,7 +44,7 @@ export function logActivity(
         userId,
         action,
         leadId: leadId ?? null,
-        meta: meta ?? null,
+        meta: meta ? (meta as object) : null,
       },
     })
     .catch((err) => {
