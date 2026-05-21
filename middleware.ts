@@ -8,6 +8,7 @@ const intlMiddleware = createMiddleware(routing)
 // ISO 3166-1 alpha-2 country codes → locale
 const COUNTRY_LOCALE: Record<string, string> = {
   ES: 'es', // Spain
+  RO: 'ro', // Romania
   AL: 'sq', // Albania
   XK: 'sq', // Kosovo
   MK: 'sq', // North Macedonia (large Albanian-speaking population)
@@ -37,7 +38,9 @@ export function middleware(request: NextRequest) {
   //   1. We detected a non-English locale, AND
   //   2. The visitor is currently on the English (prefix-less) path
   const onEnglishPath =
-    !pathname.startsWith('/es') && !pathname.startsWith('/sq')
+    !pathname.startsWith('/es') &&
+    !pathname.startsWith('/ro') &&
+    !pathname.startsWith('/sq')
 
   if (detectedLocale !== 'en' && onEnglishPath) {
     const url = request.nextUrl.clone()
@@ -60,7 +63,7 @@ export const config = {
   // Run on marketing pages only — skip API + app routes
   matcher: [
     '/',
-    '/(es|sq)/:path*',
+    '/(es|ro|sq)/:path*',
     '/how-it-works',
     '/how-it-works/:path*',
     '/((?!api|dashboard|leads|admin|login|waitlist|signup|_next|.*\\..*).*)',

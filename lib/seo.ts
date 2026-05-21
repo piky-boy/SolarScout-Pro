@@ -49,6 +49,15 @@ export const LOCALE_KEYWORDS: Record<string, string[]> = {
     'herramienta captación solar',
     'leads solares Europa',
   ],
+  ro: [
+    'lead-uri solare România',
+    'generare lead-uri solare',
+    'detectare clădiri comerciale',
+    'prospecți fotovoltaici',
+    'unealtă prospectare solară',
+    'lead-uri solare Europa',
+    'panouri solare comerciale',
+  ],
   sq: [
     'drejtme diellore Shqipëri',
     'gjenerimi i drejtmeve diellore',
@@ -63,6 +72,7 @@ export const LOCALE_KEYWORDS: Record<string, string[]> = {
 export const LOCALE_OG: Record<string, string> = {
   en: 'en_US',
   es: 'es_ES',
+  ro: 'ro_RO',
   sq: 'sq_AL',
 }
 
@@ -166,6 +176,7 @@ export function buildLocalizedMetadata(seo: LocalizedPageSEO): Metadata {
     'x-default': `${SITE_URL}${hreflangPath('en')}`,
     en: `${SITE_URL}${hreflangPath('en')}`,
     es: `${SITE_URL}${hreflangPath('es')}`,
+    ro: `${SITE_URL}${hreflangPath('ro')}`,
     sq: `${SITE_URL}${hreflangPath('sq')}`,
   }
 

@@ -8,6 +8,7 @@ import { trackEvent } from '@/components/analytics/ga4-events'
 const LANG_META: Record<string, { label: string; flag: string }> = {
   en: { label: 'EN', flag: '🇬🇧' },
   es: { label: 'ES', flag: '🇪🇸' },
+  ro: { label: 'RO', flag: '🇷🇴' },
   sq: { label: 'SQ', flag: '🇦🇱' },
 }
 

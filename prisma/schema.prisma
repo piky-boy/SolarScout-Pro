@@ -170,3 +170,69 @@ model ActivityLog {
   @@index([createdAt])
   @@index([userId, action])
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Intent SEO — programmatic landing pages
+// Each record is one /[locale]/intent/[slug] page.
+// ────────────────────────────────────────────────────────────────────────────
+model IntentLanding {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+
+  // Routing
+  slug        String  @unique
+  locale      String  @default("en")   // en | es | ro | sq
+
+  // Intent classification
+  // e.g. "solar-leads" | "commercial-solar-leads" | "warehouse-solar-leads" ...
+  intentType  String
+  isHub       Boolean @default(false)  // hub = national page (no city)
+
+  // Geo
+  city        String? // e.g. "Bucharest"
+  countryCode String? // ISO-3166 e.g. "RO"
+  tier        Int     @default(1)      // 1 = major city, 2 = secondary
+
+  // SEO layer
+  title           String
+  h1              String
+  metaTitle       String
+  metaDescription String
+  intro           String  @default("")
+  seoCopy         String  @default("")
+  heroImageUrl    String?
+  keywords        String[]
+
+  // Conversion layer (AI-generated or factory-seeded)
+  emotionalHook       String  @default("")
+  heroSubcopy         String  @default("")
+  segments            Json[]   // IntentSegment[]
+  socialProofClusters Json[]   // SocialProofCluster[]
+  faqs                Json[]   // IntentFAQ[]
+
+  // AI Search layer (AI Overviews / ChatGPT / Perplexity optimised)
+  aiSearchQA      Json[]  // AISearchQA[]
+  relatedClusters Json[]  // RelatedCluster[]
+
+  // Lead filter — JSON-safe filter descriptor (city, country, building types)
+  leadFilter Json?
+
+  // Geo editorial (tier-1 cities only — hand-crafted or AI-written)
+  cityLocalCopy String?
+
+  // A/B testing variants
+  abVariants Json?
+
+  // Status
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([locale])
+  @@index([intentType])
+  @@index([countryCode])
+  @@index([isActive])
+  @@index([isHub])
+  @@index([tier])
+  @@index([locale, intentType])
+  @@index([countryCode, intentType])
+}
